@@ -8,37 +8,46 @@ import { useEffect, useState } from "react";
 const Unit = () => {
   const { unitId } = useParams();
   const unit = units.find((u) => u.id === unitId);
-  const storageKey = `mth166-pdf-${unitId}`;
-  const [pdfName, setPdfName] = useState<string | null>(null);
-  const [pdfData, setPdfData] = useState<string | null>(null);
+  const [pdfs, setPdfs] = useState<Record<number, { name: string; data: string }>>({});
 
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setPdfName(parsed.name);
-      setPdfData(parsed.data);
-    } else {
-      setPdfName(null);
-      setPdfData(null);
-    }
-  }, [storageKey]);
+    if (!unit) return;
+    const loaded: Record<number, { name: string; data: string }> = {};
+    unit.chapters.forEach((_, i) => {
+      const stored = localStorage.getItem(`mth166-pdf-${unitId}-ch${i}`);
+      if (stored) {
+        try {
+          loaded[i] = JSON.parse(stored);
+        } catch {}
+      }
+    });
+    setPdfs(loaded);
+  }, [unitId, unit]);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (chapterIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const data = reader.result as string;
       try {
-        localStorage.setItem(storageKey, JSON.stringify({ name: file.name, data }));
-        setPdfName(file.name);
-        setPdfData(data);
+        const entry = { name: file.name, data };
+        localStorage.setItem(`mth166-pdf-${unitId}-ch${chapterIndex}`, JSON.stringify(entry));
+        setPdfs((prev) => ({ ...prev, [chapterIndex]: entry }));
       } catch {
         alert("File too large to store in browser. Please use a smaller PDF.");
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemove = (chapterIndex: number) => {
+    localStorage.removeItem(`mth166-pdf-${unitId}-ch${chapterIndex}`);
+    setPdfs((prev) => {
+      const next = { ...prev };
+      delete next[chapterIndex];
+      return next;
+    });
   };
 
   if (!unit) {
@@ -64,47 +73,46 @@ const Unit = () => {
           <p className="opacity-90 max-w-2xl">{unit.description}</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-card rounded-xl p-6 border border-border shadow-card">
-            <h3 className="font-semibold text-foreground text-lg mb-4">Chapters</h3>
-            <ol className="space-y-2">
-              {unit.chapters.map((c, i) => (
-                <li key={c} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted transition-colors">
-                  <span className="w-7 h-7 rounded-md bg-accent/10 text-accent text-sm font-semibold flex items-center justify-center flex-shrink-0">
-                    {i + 1}
-                  </span>
-                  <span className="text-foreground">{c}</span>
+        <div className="bg-card rounded-xl p-6 border border-border shadow-card">
+          <h3 className="font-semibold text-foreground text-lg mb-4">Chapters</h3>
+          <p className="text-sm text-muted-foreground mb-4">Upload a PDF for each chapter. Files are saved in your browser.</p>
+          <ol className="space-y-3">
+            {unit.chapters.map((c, i) => {
+              const pdf = pdfs[i];
+              return (
+                <li key={c} className="p-4 rounded-lg border border-border bg-background/50">
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="w-7 h-7 rounded-md bg-accent/10 text-accent text-sm font-semibold flex items-center justify-center flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-foreground font-medium flex-1">{c}</span>
+                  </div>
+                  {pdf ? (
+                    <div className="flex flex-wrap items-center gap-2 pl-10">
+                      <FileText className="w-4 h-4 text-accent" />
+                      <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">{pdf.name}</span>
+                      <a href={pdf.data} target="_blank" rel="noreferrer">
+                        <Button variant="accent" size="sm">Open</Button>
+                      </a>
+                      <label>
+                        <input type="file" accept="application/pdf" onChange={(e) => handleUpload(i, e)} className="hidden" />
+                        <span className="inline-block px-3 py-1.5 text-sm rounded-md border border-border hover:border-accent cursor-pointer">
+                          Replace
+                        </span>
+                      </label>
+                      <Button variant="outline" size="sm" onClick={() => handleRemove(i)}>Remove</Button>
+                    </div>
+                  ) : (
+                    <label className="ml-10 flex items-center gap-2 border-2 border-dashed border-border rounded-lg px-4 py-3 cursor-pointer hover:border-accent transition-colors">
+                      <Upload className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground">Upload PDF for this chapter</span>
+                      <input type="file" accept="application/pdf" onChange={(e) => handleUpload(i, e)} className="hidden" />
+                    </label>
+                  )}
                 </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="bg-card rounded-xl p-6 border border-border shadow-card">
-            <h3 className="font-semibold text-foreground text-lg mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-accent" /> Lecture PDF
-            </h3>
-            {pdfData ? (
-              <div className="space-y-3">
-                <div className="text-sm text-muted-foreground truncate">{pdfName}</div>
-                <a href={pdfData} target="_blank" rel="noreferrer">
-                  <Button variant="accent" className="w-full">Open PDF</Button>
-                </a>
-                <label className="block">
-                  <input type="file" accept="application/pdf" onChange={handleUpload} className="hidden" />
-                  <span className="block text-center text-sm text-muted-foreground hover:text-accent cursor-pointer">
-                    Replace PDF
-                  </span>
-                </label>
-              </div>
-            ) : (
-              <label className="block border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent transition-colors">
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <div className="text-sm font-medium text-foreground">Upload PDF</div>
-                <div className="text-xs text-muted-foreground mt-1">Saved in your browser</div>
-                <input type="file" accept="application/pdf" onChange={handleUpload} className="hidden" />
-              </label>
-            )}
-          </div>
+              );
+            })}
+          </ol>
         </div>
       </div>
     </AppLayout>
