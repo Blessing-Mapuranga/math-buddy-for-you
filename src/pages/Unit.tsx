@@ -41,6 +41,35 @@ const Unit = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleOpen = (chapterIndex: number) => {
+    const pdf = pdfs[chapterIndex];
+    if (!pdf) return;
+    try {
+      // Convert data URL to Blob and open via blob URL (avoids Chrome blocking large data: URLs)
+      const [meta, base64] = pdf.data.split(",");
+      const mime = /data:(.*?);base64/.exec(meta)?.[1] || "application/pdf";
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      if (!win) {
+        // Fallback: trigger a download
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = pdf.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      console.error("Failed to open PDF", err);
+      alert("Could not open PDF.");
+    }
+  };
+
   const handleRemove = (chapterIndex: number) => {
     localStorage.removeItem(`mth166-pdf-${unitId}-ch${chapterIndex}`);
     setPdfs((prev) => {
@@ -91,9 +120,7 @@ const Unit = () => {
                     <div className="flex flex-wrap items-center gap-2 pl-10">
                       <FileText className="w-4 h-4 text-accent" />
                       <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">{pdf.name}</span>
-                      <a href={pdf.data} target="_blank" rel="noreferrer">
-                        <Button variant="accent" size="sm">Open</Button>
-                      </a>
+                      <Button variant="accent" size="sm" onClick={() => handleOpen(i)}>Open</Button>
                       <label>
                         <input type="file" accept="application/pdf" onChange={(e) => handleUpload(i, e)} className="hidden" />
                         <span className="inline-block px-3 py-1.5 text-sm rounded-md border border-border hover:border-accent cursor-pointer">
