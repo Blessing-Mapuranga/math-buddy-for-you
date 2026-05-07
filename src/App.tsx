@@ -9,6 +9,7 @@ import Unit from "./pages/Unit";
 import SearchPage from "./pages/Search";
 import Settings from "./pages/Settings";
 import Read from "./pages/Read";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/read" element={<Read />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/about" element={<About />} />
           <Route path="/unit/:unitId" element={<Unit />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
