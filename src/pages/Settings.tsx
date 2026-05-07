@@ -55,7 +55,6 @@ const Settings = () => {
         </div>
 
       </div>
-      </div>
     </AppLayout>
   );
 };
