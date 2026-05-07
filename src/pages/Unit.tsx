@@ -2,8 +2,127 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Upload, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, FileText, Loader2, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+type PdfEntry = { name: string; data: string };
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const dataUrlToBytes = (dataUrl: string) => {
+  const [, base64 = ""] = dataUrl.split(",");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+const dataUrlToBlob = (dataUrl: string) => {
+  const [meta] = dataUrl.split(",");
+  const mime = /data:(.*?);base64/.exec(meta)?.[1] || "application/pdf";
+  return new Blob([dataUrlToBytes(dataUrl)], { type: mime });
+};
+
+const PdfCanvasViewer = ({ pdf }: { pdf: PdfEntry }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+  const [doc, setDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.15);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setDoc(null);
+    setPageNumber(1);
+    setError("");
+
+    const task = pdfjsLib.getDocument({ data: dataUrlToBytes(pdf.data) });
+    task.promise
+      .then((loadedDoc) => {
+        if (!cancelled) setDoc(loadedDoc);
+      })
+      .catch((err) => {
+        console.error("Failed to load PDF", err);
+        if (!cancelled) setError("This PDF could not be displayed. Please try replacing it.");
+      });
+
+    return () => {
+      cancelled = true;
+      renderTaskRef.current?.cancel();
+      task.destroy();
+    };
+  }, [pdf.data]);
+
+  useEffect(() => {
+    if (!doc || !canvasRef.current) return;
+    let cancelled = false;
+
+    renderTaskRef.current?.cancel();
+    doc.getPage(pageNumber).then((page) => {
+      if (cancelled || !canvasRef.current) return;
+      const viewport = page.getViewport({ scale });
+      const canvas = canvasRef.current;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+
+      const renderTask = page.render({ canvasContext: context, viewport });
+      renderTaskRef.current = renderTask;
+      renderTask.promise.catch((err) => {
+        if (err?.name !== "RenderingCancelledException") console.error("Failed to render PDF page", err);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      renderTaskRef.current?.cancel();
+    };
+  }, [doc, pageNumber, scale]);
+
+  if (error) {
+    return <div className="flex-1 grid place-items-center p-6 text-center text-destructive">{error}</div>;
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
+      <div className="flex flex-wrap items-center justify-center gap-2 border-b border-border bg-card px-3 py-2">
+        <Button variant="outline" size="sm" onClick={() => setPageNumber((p) => Math.max(1, p - 1))} disabled={!doc || pageNumber <= 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="min-w-28 text-center text-sm text-foreground">
+          {doc ? `Page ${pageNumber} of ${doc.numPages}` : "Loading PDF"}
+        </span>
+        <Button variant="outline" size="sm" onClick={() => setPageNumber((p) => Math.min(doc?.numPages || p, p + 1))} disabled={!doc || pageNumber >= doc.numPages}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setScale((s) => Math.max(0.75, Number((s - 0.15).toFixed(2))))} disabled={!doc}>
+          −
+        </Button>
+        <span className="w-14 text-center text-sm text-muted-foreground">{Math.round(scale * 100)}%</span>
+        <Button variant="outline" size="sm" onClick={() => setScale((s) => Math.min(2, Number((s + 0.15).toFixed(2))))} disabled={!doc}>
+          +
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        <div className="mx-auto w-fit min-w-64">
+          {!doc && (
+            <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading PDF
+            </div>
+          )}
+          <canvas ref={canvasRef} className="max-w-none rounded-md bg-background shadow-card" />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Unit = () => {
   const { unitId } = useParams();
