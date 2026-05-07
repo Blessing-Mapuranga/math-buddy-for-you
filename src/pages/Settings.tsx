@@ -54,12 +54,7 @@ const Settings = () => {
           <Button variant="outline" onClick={clearPdfs}>Clear</Button>
         </div>
 
-        <div className="bg-card rounded-xl p-6 border border-border">
-          <div className="font-semibold text-foreground">About</div>
-          <p className="text-sm text-muted-foreground mt-1">
-            MTH166 — Mathematics for Engineers. Developed by Blessing Mapuranga, LPU Mechanical Engineering student.
-          </p>
-        </div>
+      </div>
       </div>
     </AppLayout>
   );
