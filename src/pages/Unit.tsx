@@ -2,13 +2,14 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Upload } from "lucide-react";
+import { ArrowLeft, FileText, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const Unit = () => {
   const { unitId } = useParams();
   const unit = units.find((u) => u.id === unitId);
   const [pdfs, setPdfs] = useState<Record<number, { name: string; data: string }>>({});
+  const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!unit) return;
@@ -45,7 +46,6 @@ const Unit = () => {
     const pdf = pdfs[chapterIndex];
     if (!pdf) return;
     try {
-      // Convert data URL to Blob and open via blob URL (avoids Chrome blocking large data: URLs)
       const [meta, base64] = pdf.data.split(",");
       const mime = /data:(.*?);base64/.exec(meta)?.[1] || "application/pdf";
       const binary = atob(base64);
@@ -53,21 +53,16 @@ const Unit = () => {
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: mime });
       const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank");
-      if (!win) {
-        // Fallback: trigger a download
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = pdf.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setViewer({ url, name: pdf.name });
     } catch (err) {
       console.error("Failed to open PDF", err);
       alert("Could not open PDF.");
     }
+  };
+
+  const closeViewer = () => {
+    if (viewer) URL.revokeObjectURL(viewer.url);
+    setViewer(null);
   };
 
   const handleRemove = (chapterIndex: number) => {
@@ -142,6 +137,18 @@ const Unit = () => {
           </ol>
         </div>
       </div>
+      {viewer && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+            <span className="text-sm font-medium text-foreground truncate">{viewer.name}</span>
+            <div className="flex items-center gap-2">
+              <a href={viewer.url} download={viewer.name} className="text-sm px-3 py-1.5 rounded-md border border-border hover:border-accent">Download</a>
+              <Button variant="outline" size="sm" onClick={closeViewer}><X className="w-4 h-4" /></Button>
+            </div>
+          </div>
+          <iframe src={viewer.url} title={viewer.name} className="flex-1 w-full bg-white" />
+        </div>
+      )}
     </AppLayout>
   );
 };
