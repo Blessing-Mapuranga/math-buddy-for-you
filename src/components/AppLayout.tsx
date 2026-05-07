@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Menu, X } from "lucide-react";
+import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Info, Menu, X } from "lucide-react";
 import lpuLogo from "@/assets/lpu-logo.png";
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/read", label: "Read", icon: BookOpenText },
   { to: "/search", label: "Search", icon: SearchIcon },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
+  { to: "/about", label: "About", icon: Info },
 ];
 
 const AppLayout = ({ children, title = "MTH166 - Mathematics for Engineers" }: { children: ReactNode; title?: string }) => {
@@ -74,9 +75,6 @@ const AppLayout = ({ children, title = "MTH166 - Mathematics for Engineers" }: {
 
         <main className="flex-1 relative">
           {children}
-          <footer className="px-6 py-4 text-right text-xs md:text-sm text-muted-foreground border-t border-border bg-card/50">
-            Developed by <span className="font-semibold text-foreground">Blessing Mapuranga</span>, LPU Mechanical Engineering student.
-          </footer>
         </main>
       </div>
     </div>
