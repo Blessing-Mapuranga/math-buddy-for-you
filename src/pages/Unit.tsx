@@ -127,8 +127,8 @@ const PdfCanvasViewer = ({ pdf }: { pdf: PdfEntry }) => {
 const Unit = () => {
   const { unitId } = useParams();
   const unit = units.find((u) => u.id === unitId);
-  const [pdfs, setPdfs] = useState<Record<number, { name: string; data: string }>>({});
-  const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null);
+  const [pdfs, setPdfs] = useState<Record<number, PdfEntry>>({});
+  const [viewer, setViewer] = useState<PdfEntry | null>(null);
 
   useEffect(() => {
     if (!unit) return;
@@ -163,25 +163,22 @@ const Unit = () => {
 
   const handleOpen = (chapterIndex: number) => {
     const pdf = pdfs[chapterIndex];
-    if (!pdf) return;
-    try {
-      const [meta, base64] = pdf.data.split(",");
-      const mime = /data:(.*?);base64/.exec(meta)?.[1] || "application/pdf";
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const blob = new Blob([bytes], { type: mime });
-      const url = URL.createObjectURL(blob);
-      setViewer({ url, name: pdf.name });
-    } catch (err) {
-      console.error("Failed to open PDF", err);
-      alert("Could not open PDF.");
-    }
+    if (pdf) setViewer(pdf);
   };
 
   const closeViewer = () => {
-    if (viewer) URL.revokeObjectURL(viewer.url);
     setViewer(null);
+  };
+
+  const handleDownload = (pdf: PdfEntry) => {
+    const url = URL.createObjectURL(dataUrlToBlob(pdf.data));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = pdf.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleRemove = (chapterIndex: number) => {
@@ -257,15 +254,17 @@ const Unit = () => {
         </div>
       </div>
       {viewer && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center justify-between gap-3 px-4 py-2 bg-card border-b border-border">
             <span className="text-sm font-medium text-foreground truncate">{viewer.name}</span>
             <div className="flex items-center gap-2">
-              <a href={viewer.url} download={viewer.name} className="text-sm px-3 py-1.5 rounded-md border border-border hover:border-accent">Download</a>
+              <Button variant="outline" size="sm" onClick={() => handleDownload(viewer)}>
+                <Download className="w-4 h-4" /> Download
+              </Button>
               <Button variant="outline" size="sm" onClick={closeViewer}><X className="w-4 h-4" /></Button>
             </div>
           </div>
-          <iframe src={viewer.url} title={viewer.name} className="flex-1 w-full bg-white" />
+          <PdfCanvasViewer pdf={viewer} />
         </div>
       )}
     </AppLayout>
