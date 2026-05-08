@@ -2,10 +2,12 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, FileText, Loader2, Upload, X } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Download, FileText, Loader2, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getChapterNotes } from "@/data/notes";
+import ChapterNotesView from "@/components/ChapterNotesView";
 
 type PdfEntry = { name: string; data: string };
 
@@ -129,6 +131,7 @@ const Unit = () => {
   const unit = units.find((u) => u.id === unitId);
   const [pdfs, setPdfs] = useState<Record<number, PdfEntry>>({});
   const [viewer, setViewer] = useState<PdfEntry | null>(null);
+  const [notesChapter, setNotesChapter] = useState<number | null>(null);
 
   useEffect(() => {
     if (!unit) return;
@@ -226,6 +229,11 @@ const Unit = () => {
                       {i + 1}
                     </span>
                     <span className="text-foreground font-medium flex-1">{c}</span>
+                    {getChapterNotes(unit.id, i) && (
+                      <Button variant="accent" size="sm" onClick={() => setNotesChapter(i)}>
+                        <BookOpen className="w-4 h-4" /> Study Notes
+                      </Button>
+                    )}
                   </div>
                   {pdf ? (
                     <div className="flex flex-wrap items-center gap-2 pl-10">
@@ -267,6 +275,26 @@ const Unit = () => {
           <PdfCanvasViewer pdf={viewer} />
         </div>
       )}
+      {notesChapter !== null && (() => {
+        const n = getChapterNotes(unit.id, notesChapter);
+        if (!n) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-card border-b border-border">
+              <div className="min-w-0">
+                <div className="text-xs text-accent font-semibold">{unit.number} · Chapter {notesChapter + 1}</div>
+                <div className="text-sm font-semibold text-foreground truncate">{n.title}</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setNotesChapter(null)}><X className="w-4 h-4" /></Button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <div className="max-w-4xl mx-auto p-6 lg:p-10">
+                <ChapterNotesView notes={n} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </AppLayout>
   );
 };
