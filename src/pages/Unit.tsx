@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Download, FileText, Loader2, Presentation, Upload, X } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Download, FileText, Files, Loader2, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -132,8 +132,8 @@ const Unit = () => {
   const [pdfs, setPdfs] = useState<Record<number, PdfEntry>>({});
   const [viewer, setViewer] = useState<PdfEntry | null>(null);
   const [notesChapter, setNotesChapter] = useState<number | null>(null);
-  // pptKey -> entry. pptKey = `${chapterIndex}-${slot}` where slot is 0..4
-  const [ppts, setPpts] = useState<Record<string, PdfEntry>>({});
+  // extra PDFs per chapter. key = `${chapterIndex}-${slot}` where slot is 0..4
+  const [extraPdfs, setExtraPdfs] = useState<Record<string, PdfEntry>>({});
 
   useEffect(() => {
     if (!unit) return;
@@ -155,7 +155,9 @@ const Unit = () => {
     unit.chapters.forEach((_, i) => {
       for (let s = 0; s < 5; s++) {
         const key = `${i}-${s}`;
-        const stored = localStorage.getItem(`mth166-ppt-${unitId}-ch${i}-s${s}`);
+        const stored =
+          localStorage.getItem(`mth166-extrapdf-${unitId}-ch${i}-s${s}`) ||
+          localStorage.getItem(`mth166-ppt-${unitId}-ch${i}-s${s}`);
         if (stored) {
           try {
             loaded[key] = JSON.parse(stored);
@@ -163,7 +165,7 @@ const Unit = () => {
         }
       }
     });
-    setPpts(loaded);
+    setExtraPdfs(loaded);
   }, [unitId, unit]);
 
   const handleUpload = (chapterIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,7 +214,7 @@ const Unit = () => {
     });
   };
 
-  const handlePptUpload = (chapterIndex: number, slot: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExtraUpload = (chapterIndex: number, slot: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -220,8 +222,8 @@ const Unit = () => {
       const data = reader.result as string;
       try {
         const entry = { name: file.name, data };
-        localStorage.setItem(`mth166-ppt-${unitId}-ch${chapterIndex}-s${slot}`, JSON.stringify(entry));
-        setPpts((prev) => ({ ...prev, [`${chapterIndex}-${slot}`]: entry }));
+        localStorage.setItem(`mth166-extrapdf-${unitId}-ch${chapterIndex}-s${slot}`, JSON.stringify(entry));
+        setExtraPdfs((prev) => ({ ...prev, [`${chapterIndex}-${slot}`]: entry }));
       } catch {
         alert("File too large to store in browser. Please use a smaller file.");
       }
@@ -229,9 +231,10 @@ const Unit = () => {
     reader.readAsDataURL(file);
   };
 
-  const handlePptRemove = (chapterIndex: number, slot: number) => {
+  const handleExtraRemove = (chapterIndex: number, slot: number) => {
+    localStorage.removeItem(`mth166-extrapdf-${unitId}-ch${chapterIndex}-s${slot}`);
     localStorage.removeItem(`mth166-ppt-${unitId}-ch${chapterIndex}-s${slot}`);
-    setPpts((prev) => {
+    setExtraPdfs((prev) => {
       const next = { ...prev };
       delete next[`${chapterIndex}-${slot}`];
       return next;
@@ -303,34 +306,37 @@ const Unit = () => {
 
                   <div className="ml-10 mt-4 pt-4 border-t border-border">
                     <div className="flex items-center gap-2 mb-2">
-                      <Presentation className="w-4 h-4 text-accent" />
-                      <span className="text-sm font-semibold text-foreground">Slides (up to 5 PowerPoints)</span>
+                      <Files className="w-4 h-4 text-accent" />
+                      <span className="text-sm font-semibold text-foreground">Additional PDFs (up to 5)</span>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-2">
                       {Array.from({ length: 5 }).map((_, s) => {
-                        const ppt = ppts[`${i}-${s}`];
+                        const extra = extraPdfs[`${i}-${s}`];
                         return (
                           <div key={s} className="flex items-center gap-2 p-2 rounded-md border border-border bg-background/40">
                             <span className="w-6 h-6 rounded bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center flex-shrink-0">
                               {s + 1}
                             </span>
-                            {ppt ? (
+                            {extra ? (
                               <>
-                                <span className="text-xs text-foreground truncate flex-1 min-w-0" title={ppt.name}>{ppt.name}</span>
-                                <Button variant="outline" size="sm" onClick={() => handleDownload(ppt)} className="h-7 px-2">
+                                <span className="text-xs text-foreground truncate flex-1 min-w-0" title={extra.name}>{extra.name}</span>
+                                <Button variant="accent" size="sm" onClick={() => setViewer(extra)} className="h-7 px-2 text-xs">
+                                  Open
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => handleDownload(extra)} className="h-7 px-2">
                                   <Download className="w-3 h-3" />
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => handlePptRemove(i, s)} className="h-7 px-2">
+                                <Button variant="outline" size="sm" onClick={() => handleExtraRemove(i, s)} className="h-7 px-2">
                                   <X className="w-3 h-3" />
                                 </Button>
                               </>
                             ) : (
                               <label className="flex-1 cursor-pointer text-xs text-muted-foreground hover:text-accent flex items-center gap-1">
-                                <Upload className="w-3 h-3" /> Upload PPT {s + 1}
+                                <Upload className="w-3 h-3" /> Upload PDF {s + 1}
                                 <input
                                   type="file"
-                                  accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                                  onChange={(e) => handlePptUpload(i, s, e)}
+                                  accept="application/pdf"
+                                  onChange={(e) => handleExtraUpload(i, s, e)}
                                   className="hidden"
                                 />
                               </label>
