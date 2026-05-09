@@ -81,7 +81,7 @@ const Footer = () => {
             © 2024 MTH166 - Mathematics for Engineers. All rights reserved.
           </p>
           <p className="text-primary-foreground/50 text-sm">
-            Built with ❤️ for engineering students
+            Built with ❤️ by Blessing Mapuranga
           </p>
         </div>
       </div>
