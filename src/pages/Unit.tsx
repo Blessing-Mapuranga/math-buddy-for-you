@@ -7,7 +7,17 @@ import { useState } from "react";
 import { getChapterNotes } from "@/data/notes";
 import ChapterNotesView from "@/components/ChapterNotesView";
 
-const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
+const PDF_PREVIEW_ORIGIN = "https://math-buddy-for-you.lovable.app";
+
+const pdfHref = (filename: string) => {
+  const encodedPath = `/MTH166/${encodeURI(filename)}`;
+
+  if (typeof window !== "undefined" && window.location.hostname.endsWith("lovableproject.com")) {
+    return `${PDF_PREVIEW_ORIGIN}${encodedPath}`;
+  }
+
+  return encodedPath;
+};
 
 const Unit = () => {
   const { unitId } = useParams();
