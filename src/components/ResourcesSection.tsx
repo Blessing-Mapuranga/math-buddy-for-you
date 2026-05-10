@@ -1,13 +1,24 @@
+import type { ComponentType } from "react";
 import { FileText, Video, BookOpen, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const resources = [
+type Resource = {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action: string;
+  type: "download" | "link";
+  file?: string;
+};
+
+const resources: Resource[] = [
   {
     icon: FileText,
     title: "Lecture Notes",
     description: "Comprehensive PDF notes covering all topics with solved examples",
-    action: "Download PDF",
+    action: "Open Lecture Notes",
     type: "download",
+    file: "lecture-notes.pdf",
   },
   {
     icon: Video,
@@ -32,7 +43,11 @@ const formulas = [
   { name: "Laplace", formula: "L{f(t)} = ∫₀^∞ e⁻ˢᵗf(t)dt" },
 ];
 
-const ResourcesSection = () => {
+type ResourcesSectionProps = {
+  onOpenPdf?: (fileName: string) => void;
+};
+
+const ResourcesSection = ({ onOpenPdf }: ResourcesSectionProps) => {
   return (
     <section id="resources" className="py-24 bg-muted/50 relative">
       <div className="container mx-auto px-4">
@@ -67,7 +82,15 @@ const ResourcesSection = () => {
                     <p className="text-muted-foreground text-sm mb-4">
                       {resource.description}
                     </p>
-                    <Button variant="accent" size="sm">
+                    <Button
+                      variant="accent"
+                      size="sm"
+                      onClick={() => {
+                        if (resource.type === "download" && resource.file) {
+                          onOpenPdf?.(resource.file);
+                        }
+                      }}
+                    >
                       {resource.type === "download" ? (
                         <Download className="w-4 h-4 mr-2" />
                       ) : (
