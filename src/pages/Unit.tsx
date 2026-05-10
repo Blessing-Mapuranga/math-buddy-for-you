@@ -3,11 +3,44 @@ import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, ExternalLink, FileText, X } from "lucide-react";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { getChapterNotes } from "@/data/notes";
 import ChapterNotesView from "@/components/ChapterNotesView";
 
 const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
+
+const showPdfLoading = (tab: Window, filename: string) => {
+  tab.document.title = filename;
+  tab.document.body.innerHTML = `<main style="font-family: system-ui, sans-serif; padding: 2rem; line-height: 1.5;"><h1 style="font-size: 1.1rem; margin: 0 0 .5rem;">Opening PDF…</h1><p style="margin: 0;">${filename}</p></main>`;
+};
+
+const openPdfInNewTab = async (event: MouseEvent<HTMLAnchorElement>, filename: string) => {
+  const href = pdfHref(filename);
+  const tab = window.open("about:blank", "_blank");
+
+  if (!tab) {
+    return;
+  }
+
+  event.preventDefault();
+  tab.opener = null;
+  showPdfLoading(tab, filename);
+
+  try {
+    const response = await fetch(href);
+
+    if (!response.ok) {
+      throw new Error(`PDF request failed with status ${response.status}`);
+    }
+
+    const pdfBlob = await response.blob();
+    const pdfUrl = URL.createObjectURL(new Blob([pdfBlob], { type: "application/pdf" }));
+    tab.location.href = pdfUrl;
+    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+  } catch {
+    tab.location.href = href;
+  }
+};
 
 const Unit = () => {
   const { unitId } = useParams();
@@ -67,6 +100,7 @@ const Unit = () => {
                             href={pdfHref(f)}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(event) => openPdfInNewTab(event, f)}
                             className="flex items-center gap-2 p-2 rounded-md border border-border bg-background/40 hover:border-accent transition-colors group"
                           >
                             <FileText className="w-4 h-4 text-accent flex-shrink-0" />
