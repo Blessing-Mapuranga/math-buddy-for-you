@@ -100,6 +100,7 @@ const Unit = () => {
                             href={pdfHref(f)}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(event) => openPdfInNewTab(event, f)}
                             className="flex items-center gap-2 p-2 rounded-md border border-border bg-background/40 hover:border-accent transition-colors group"
                           >
                             <FileText className="w-4 h-4 text-accent flex-shrink-0" />
