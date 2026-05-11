@@ -6,7 +6,7 @@ import { type MouseEvent } from "react";
 
 const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
 const studyNotesHref = (unitNumber: number, chapterIndex: number) =>
-  `/MTH166/Unit${unitNumber}/Chapter${chapterIndex + 1}.pdf`;
+  `/MTH166/Unit/${unitNumber}/Chapter/${chapterIndex + 1}.pdf`;
 
 const Unit = () => {
   const { unitId } = useParams();
