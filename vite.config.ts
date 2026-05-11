@@ -4,6 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
+  base: "/", // This ensures the app looks at the root domain, not a subfolder
   server: {
     host: "::",
     port: 8080,
@@ -18,4 +19,3 @@ export default defineConfig(() => ({
     },
   },
 }));
-
