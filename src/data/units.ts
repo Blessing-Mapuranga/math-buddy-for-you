@@ -6,8 +6,13 @@ export interface UnitTopic {
   chapters: string[];
   /** PDF filenames (in /MTH166/) per chapter — index aligned with `chapters`. */
   chapterPdfs?: string[][];
+  /** Internal AI-generated notes route per chapter — index aligned with `chapters`. */
+  chapterNotes?: string[];
   color: string;
 }
+
+const chapterNotesRoutes = (unitId: string, count: number) =>
+  Array.from({ length: count }, (_, index) => `/unit/${unitId}/chapter/${index}`);
 
 export const units: UnitTopic[] = [
   {
@@ -42,6 +47,7 @@ export const units: UnitTopic[] = [
         "Lecture 6-Clairaut Equation (2).pdf",
       ],
     ],
+    chapterNotes: chapterNotesRoutes("unit-1", 5),
     color: "from-blue-500 to-blue-600",
   },
   {
@@ -71,6 +77,7 @@ export const units: UnitTopic[] = [
       ],
       ["Lecture 15-Method of Variation of Parameters.pdf"],
     ],
+    chapterNotes: chapterNotesRoutes("unit-2", 5),
     color: "from-teal-500 to-teal-600",
   },
   {
@@ -96,6 +103,7 @@ export const units: UnitTopic[] = [
       ["Lecture 20-Simultaneous Differential Equations.pdf"],
       ["Lecture 20-Simultaneous Differential Equations.pdf"],
     ],
+    chapterNotes: chapterNotesRoutes("unit-3", 4),
     color: "from-indigo-500 to-indigo-600",
   },
   {
@@ -123,6 +131,7 @@ export const units: UnitTopic[] = [
         "Lecture 27-Boundary value problems of  Wave equation.pdf",
       ],
     ],
+    chapterNotes: chapterNotesRoutes("unit-4", 5),
     color: "from-emerald-500 to-emerald-600",
   },
   {
@@ -151,6 +160,7 @@ export const units: UnitTopic[] = [
       ],
       ["Lecture 32-Divergence and Curl of a Vector Field.pdf"],
     ],
+    chapterNotes: chapterNotesRoutes("unit-5", 4),
     color: "from-violet-500 to-violet-600",
   },
   {
@@ -181,6 +191,7 @@ export const units: UnitTopic[] = [
         "Lecture 38-Revision of Unit-6 and MCQ Practice.pdf",
       ],
     ],
+    chapterNotes: chapterNotesRoutes("unit-6", 5),
     color: "from-sky-500 to-sky-600",
   },
 ];

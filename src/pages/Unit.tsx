@@ -1,13 +1,13 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
 import { ArrowLeft, BookOpen, ExternalLink, FileText } from "lucide-react";
-import { type MouseEvent } from "react";
 
 const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
 
 const Unit = () => {
   const { unitId } = useParams();
+  const navigate = useNavigate();
   const unit = units.find((u) => u.id === unitId);
 
   if (!unit) {
@@ -36,13 +36,13 @@ const Unit = () => {
         <div className="bg-card rounded-xl p-6 border border-border shadow-card">
           <h3 className="font-semibold text-foreground text-lg mb-4">Chapters</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Open the lecture PDFs and study note PDFs in a new tab.
+            Study Notes open inside the app, while PDF files open in a new tab.
           </p>
           <ol className="space-y-3">
             {unit.chapters.map((c, i) => {
               const files = unit.chapterPdfs?.[i] ?? [];
-              const studyNotesFile = files[0];
-              const studyNotesLink = studyNotesFile ? `/MTH166/${encodeURI(studyNotesFile)}` : undefined;
+              const notesRoute = unit.chapterNotes?.[i] ?? `/unit/${unit.id}/chapter/${i}`;
+
               return (
                 <li key={c} className="p-4 rounded-lg border border-border bg-background/50">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
@@ -52,30 +52,28 @@ const Unit = () => {
                       </span>
                       <span className="text-foreground font-medium">{c}</span>
                     </div>
-                    <a
-                      href={studyNotesLink ?? undefined}
-                      
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => navigate(notesRoute)}
                       className="inline-flex items-center gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
                     >
                       <BookOpen className="w-4 h-4" /> Study Notes
-                    </a>
+                    </button>
                   </div>
 
                   {files.length > 0 ? (
                     <ul className="ml-10 space-y-2">
                       {files.map((f) => (
                         <li key={f}>
-                          <a
-                            href={pdfHref(f)}
-                            
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-3 min-h-[44px] rounded-md border border-border bg-background/40 hover:border-accent active:bg-accent/5 transition-colors group"
+                          <button
+                            type="button"
+                            onClick={() => window.open(pdfHref(f), "_blank", "noopener,noreferrer")}
+                            className="flex items-center gap-2 w-full text-left p-3 min-h-[44px] rounded-md border border-border bg-background/40 hover:border-accent active:bg-accent/5 transition-colors group"
                           >
                             <FileText className="w-4 h-4 text-accent flex-shrink-0" />
                             <span className="text-sm text-foreground flex-1 truncate" title={f}>{f}</span>
                             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent flex-shrink-0" />
-                          </a>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -90,7 +88,6 @@ const Unit = () => {
           </ol>
         </div>
       </div>
-
     </AppLayout>
   );
 };

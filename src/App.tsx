@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Unit from "./pages/Unit";
+import ChapterNotes from "./pages/ChapterNotes";
 import SearchPage from "./pages/Search";
 import Settings from "./pages/Settings";
 import Read from "./pages/Read";
@@ -27,6 +28,7 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
             <Route path="/unit/:unitId" element={<Unit />} />
+            <Route path="/unit/:unitId/chapter/:chapterIndex" element={<ChapterNotes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

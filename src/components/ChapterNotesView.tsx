@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
 import type { ChapterNotes } from "@/data/notes/types";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 
 /**
  * Renders a string that may contain inline ($...$) and block ($$...$$) LaTeX.
@@ -72,9 +73,18 @@ const PracticeItem = ({ q, a, idx }: { q: string; a: string; idx: number }) => {
   );
 };
 
-const ChapterNotesView = ({ notes }: { notes: ChapterNotes }) => {
+const ChapterNotesView = ({ notes, backPath }: { notes: ChapterNotes; backPath?: string }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-8">
+      {backPath && (
+        <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate(backPath)} className="inline-flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" /> Back to unit
+          </Button>
+        </div>
+      )}
       <section className="bg-card rounded-xl p-6 border border-border shadow-card">
         <h3 className="font-semibold text-foreground text-lg mb-3">Overview</h3>
         <p className="text-muted-foreground leading-relaxed">{notes.intro}</p>
