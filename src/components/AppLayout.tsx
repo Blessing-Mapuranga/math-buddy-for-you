@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
-import { NavLink } from "react-router-dom";
-import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Info, Menu, X } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Info, Menu, X, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import lpuLogo from "@/assets/lpu-logo.png";
 
 const navItems = [
@@ -13,6 +14,25 @@ const navItems = [
 
 const AppLayout = ({ children, title = "MTH166 - Mathematics for Engineers" }: { children: ReactNode; title?: string }) => {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  const handleShare = async () => {
+    const shareData = {
+      title: "Mr Mapling's Math Kit — MTH166",
+      text: "Free Engineering Mathematics (MTH166) study companion. Install it on your phone:",
+      url: window.location.origin,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success("Link copied", { description: "Share it with your classmates." });
+      }
+    } catch (err) {
+      // user cancelled — ignore
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -70,10 +90,18 @@ const AppLayout = ({ children, title = "MTH166 - Mathematics for Engineers" }: {
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <img src={lpuLogo} alt="LPU" className="w-9 h-9 object-contain mr-3" />
-          <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">{title}</h1>
+          <h1 className="text-lg md:text-xl font-semibold text-foreground truncate flex-1">{title}</h1>
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Share app"
+            className="ml-2 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:bg-muted text-foreground"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
         </header>
 
-        <main className="flex-1 relative">
+        <main key={location.pathname} className="flex-1 relative animate-page-in">
           {children}
         </main>
       </div>
