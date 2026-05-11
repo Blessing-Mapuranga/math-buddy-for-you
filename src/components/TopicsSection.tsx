@@ -4,7 +4,7 @@ import {
   Sigma, 
   Grid3X3, 
   LineChart, 
-  Infinity, 
+  Infinity as InfinityIcon, 
   Binary,
   Waves
 } from "lucide-react";
@@ -54,7 +54,7 @@ const topics = [
     color: "from-sky-500 to-sky-600",
   },
   {
-    icon: Infinity,
+    icon: InfinityIcon,
     title: "Series & Sequences",
     description: "Study convergence, Taylor series, Fourier series, and their applications.",
     chapters: 3,
