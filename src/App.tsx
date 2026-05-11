@@ -28,7 +28,7 @@ const App = () => {
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
             <Route path="/unit/:unitId" element={<Unit />} />
-            <Route path="/MTH166/Unit:unitNumber/Chapter:chapterNumber.pdf" element={<StaticPdfRedirect />} />
+            <Route path="/MTH166/Unit/:unitNumber/Chapter/:chapterNumber.pdf" element={<StaticPdfRedirect />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
