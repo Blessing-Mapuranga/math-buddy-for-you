@@ -18,7 +18,7 @@ const AppLayout = ({ children, title = "MTH166 - Mathematics for Engineers" }: {
 
   const handleShare = async () => {
     const shareData = {
-      title: "Mr Mapling's Math Kit — MTH166",
+      title: "@Mapling MTH 166 Database — MTH166",
       text: "Free Engineering Mathematics (MTH166) study companion. Install it on your phone:",
       url: window.location.origin,
     };
