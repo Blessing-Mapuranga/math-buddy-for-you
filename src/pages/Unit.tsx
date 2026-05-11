@@ -5,8 +5,6 @@ import { ArrowLeft, BookOpen, ExternalLink, FileText } from "lucide-react";
 import { type MouseEvent } from "react";
 
 const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
-const studyNotesHref = (unitNumber: number, chapterIndex: number) =>
-  `/MTH166/Unit/${unitNumber}/Chapter/${chapterIndex + 1}.pdf`;
 
 const Unit = () => {
   const { unitId } = useParams();
@@ -43,6 +41,8 @@ const Unit = () => {
           <ol className="space-y-3">
             {unit.chapters.map((c, i) => {
               const files = unit.chapterPdfs?.[i] ?? [];
+              const studyNotesFile = files[0];
+              const studyNotesLink = studyNotesFile ? `/MTH166/${encodeURI(studyNotesFile)}` : undefined;
               return (
                 <li key={c} className="p-4 rounded-lg border border-border bg-background/50">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
@@ -53,7 +53,7 @@ const Unit = () => {
                       <span className="text-foreground font-medium">{c}</span>
                     </div>
                     <a
-                      href={studyNotesHref(Number(unit.id.split("-")[1]), i)}
+                      href={studyNotesLink ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
