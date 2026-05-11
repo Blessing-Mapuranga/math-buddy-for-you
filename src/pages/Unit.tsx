@@ -1,18 +1,16 @@
 import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { units } from "@/data/units";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, ExternalLink, FileText, X } from "lucide-react";
-import { useState } from "react";
-import { getChapterNotes } from "@/data/notes";
-import ChapterNotesView from "@/components/ChapterNotesView";
+import { ArrowLeft, BookOpen, ExternalLink, FileText } from "lucide-react";
+import { type MouseEvent } from "react";
 
 const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
+const studyNotesHref = (unitNumber: number, chapterIndex: number) =>
+  `/MTH166/Unit${unitNumber}/Chapter${chapterIndex + 1}.pdf`;
 
 const Unit = () => {
   const { unitId } = useParams();
   const unit = units.find((u) => u.id === unitId);
-  const [notesChapter, setNotesChapter] = useState<number | null>(null);
 
   if (!unit) {
     return (
@@ -40,27 +38,28 @@ const Unit = () => {
         <div className="bg-card rounded-xl p-6 border border-border shadow-card">
           <h3 className="font-semibold text-foreground text-lg mb-4">Chapters</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Open the lecture PDFs in a new tab, or read in-app study notes with worked examples.
+            Open the lecture PDFs and study note PDFs in a new tab.
           </p>
           <ol className="space-y-3">
             {unit.chapters.map((c, i) => {
               const files = unit.chapterPdfs?.[i] ?? [];
               return (
                 <li key={c} className="p-4 rounded-lg border border-border bg-background/50">
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="w-7 h-7 rounded-md bg-accent/10 text-accent text-sm font-semibold flex items-center justify-center flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <span className="text-foreground font-medium flex-1">{c}</span>
-                    {getChapterNotes(unit.id, i) && (
-                      <Button
-                        variant="accent"
-                        onClick={() => setNotesChapter(i)}
-                        className="min-h-[44px] min-w-[44px]"
-                      >
-                        <BookOpen className="w-4 h-4" /> Study Notes
-                      </Button>
-                    )}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <span className="w-7 h-7 rounded-md bg-accent/10 text-accent text-sm font-semibold flex items-center justify-center flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="text-foreground font-medium">{c}</span>
+                    </div>
+                    <a
+                      href={studyNotesHref(Number(unit.id.split("-")[1]), i)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+                    >
+                      <BookOpen className="w-4 h-4" /> Study Notes
+                    </a>
                   </div>
 
                   {files.length > 0 ? (
@@ -92,26 +91,6 @@ const Unit = () => {
         </div>
       </div>
 
-      {notesChapter !== null && (() => {
-        const n = getChapterNotes(unit.id, notesChapter);
-        if (!n) return null;
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-card border-b border-border">
-              <div className="min-w-0">
-                <div className="text-xs text-accent font-semibold">{unit.number} · Chapter {notesChapter + 1}</div>
-                <div className="text-sm font-semibold text-foreground truncate">{n.title}</div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setNotesChapter(null)}><X className="w-4 h-4" /></Button>
-            </div>
-            <div className="flex-1 overflow-auto">
-              <div className="max-w-4xl mx-auto p-6 lg:p-10">
-                <ChapterNotesView notes={n} />
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </AppLayout>
   );
 };

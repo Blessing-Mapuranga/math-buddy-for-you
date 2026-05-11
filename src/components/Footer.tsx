@@ -76,12 +76,9 @@ const Footer = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-primary-foreground/10 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="mt-12 pt-8 border-t border-primary-foreground/10 flex items-center justify-center">
           <p className="text-primary-foreground/50 text-sm">
-            © 2024 MTH166 - Mathematics for Engineers. All rights reserved.
-          </p>
-          <p className="text-primary-foreground/50 text-sm">
-            Built with ❤️ by Blessing Mapuranga
+            @Mapling MTH-166 App
           </p>
         </div>
       </div>
