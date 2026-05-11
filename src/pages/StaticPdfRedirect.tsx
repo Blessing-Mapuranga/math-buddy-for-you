@@ -10,7 +10,7 @@ const StaticPdfRedirect = () => {
   const chapterIndex = Number(chapterNumber) - 1;
   const unit = units[unitIndex];
   const filename = unit?.chapterPdfs?.[chapterIndex]?.[0];
-  const targetUrl = filename ? `${import.meta.env.BASE_URL}MTH166/${encodeURI(filename)}` : null;
+  const targetUrl = filename ? `/MTH166/${encodeURI(filename)}` : null;
 
   useEffect(() => {
     if (!targetUrl) {
