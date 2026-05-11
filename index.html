@@ -2,19 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Engineering Mathematics [MTH166]</title>
     <meta name="description" content="Engineer&#39;s Math Companion is a mobile application designed to assist engineering students with their mathematics studies.">
     <meta name="author" content="Blessing Mapuranga" />
 
-    <!-- PWA / Add to Home Screen -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA / Add to Home Screen (manifest is injected by vite-plugin-pwa) -->
     <meta name="theme-color" content="#1a3a5c" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MTH166" />
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <style>
+      html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+      #app-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+        background: linear-gradient(135deg, #0F172A 0%, #1a3a5c 60%, #0d9488 100%);
+        color: #fff; font-family: Inter, system-ui, sans-serif;
+        transition: opacity .35s ease;
+      }
+      #app-splash.hide { opacity: 0; pointer-events: none; }
+      #app-splash img { width: 96px; height: 96px; border-radius: 24px; background:#fff; padding:10px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+      #app-splash .t1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .02em; }
+      #app-splash .t2 { font-size: .8rem; opacity: .75; }
+      #app-splash .spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; animation: sp .9s linear infinite; }
+      @keyframes sp { to { transform: rotate(360deg); } }
+    </style>
 
     <!-- TODO: Update og:title to match your application name -->
     
@@ -32,7 +48,21 @@
 </head>
 
   <body>
+    <div id="app-splash">
+      <img src="/icon-192.png" alt="Mr Mapling's Math Kit" />
+      <div class="t1">Mr Mapling's Math Kit</div>
+      <div class="t2">Engineering Mathematics · MTH166</div>
+      <div class="spin" aria-hidden="true"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          var s = document.getElementById('app-splash');
+          if (s) { s.classList.add('hide'); setTimeout(function () { s.remove(); }, 400); }
+        }, 450);
+      });
+    </script>
   </body>
 </html>
