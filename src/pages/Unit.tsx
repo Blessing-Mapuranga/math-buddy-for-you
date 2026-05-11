@@ -53,7 +53,11 @@ const Unit = () => {
                     </span>
                     <span className="text-foreground font-medium flex-1">{c}</span>
                     {getChapterNotes(unit.id, i) && (
-                      <Button variant="accent" size="sm" onClick={() => setNotesChapter(i)}>
+                      <Button
+                        variant="accent"
+                        onClick={() => setNotesChapter(i)}
+                        className="min-h-[44px] min-w-[44px]"
+                      >
                         <BookOpen className="w-4 h-4" /> Study Notes
                       </Button>
                     )}
@@ -67,7 +71,7 @@ const Unit = () => {
                             href={pdfHref(f)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded-md border border-border bg-background/40 hover:border-accent transition-colors group"
+                            className="flex items-center gap-2 p-3 min-h-[44px] rounded-md border border-border bg-background/40 hover:border-accent active:bg-accent/5 transition-colors group"
                           >
                             <FileText className="w-4 h-4 text-accent flex-shrink-0" />
                             <span className="text-sm text-foreground flex-1 truncate" title={f}>{f}</span>

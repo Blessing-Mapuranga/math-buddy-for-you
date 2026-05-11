@@ -3,10 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>Engineering Mathematics [MTH166]</title>
     <meta name="description" content="Engineer&#39;s Math Companion is a mobile application designed to assist engineering students with their mathematics studies.">
     <meta name="author" content="Blessing Mapuranga" />
+
+    <!-- PWA / Add to Home Screen -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1a3a5c" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MTH166" />
+    <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- TODO: Update og:title to match your application name -->
     
@@ -24,28 +32,6 @@
 </head>
 
   <body>
-    <!-- Back to Dashboard Button -->
-    <button 
-      id="back-to-dashboard-btn" 
-      style="display: none; position: fixed; top: 20px; left: 20px; z-index: 50; padding: 8px 16px; background-color: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;"
-      onclick="document.getElementById('pdf-viewer-container').style.display = 'none'; this.style.display = 'none'; document.getElementById('root').style.display = 'block';"
-    >
-      ← Back to Dashboard
-    </button>
-
-    <!-- Main PDF Viewer Container -->
-    <div 
-      id="pdf-viewer-container" 
-      style="display: none; width: 100%; height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; background-color: #f3f4f6; padding-top: 70px;"
-    >
-      <!-- PDF Iframe -->
-      <iframe 
-        id="pdf-iframe" 
-        style="width: 100%; height: 100%; border: none; background-color: white;"
-        title="Lecture Notes PDF Viewer"
-      ></iframe>
-    </div>
-
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
