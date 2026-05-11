@@ -54,7 +54,7 @@ const Unit = () => {
                     </div>
                     <a
                       href={studyNotesLink ?? undefined}
-                      target="_blank"
+                      
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-md border border-border bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
                     >
@@ -68,7 +68,7 @@ const Unit = () => {
                         <li key={f}>
                           <a
                             href={pdfHref(f)}
-                            target="_blank"
+                            
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 p-3 min-h-[44px] rounded-md border border-border bg-background/40 hover:border-accent active:bg-accent/5 transition-colors group"
                           >
