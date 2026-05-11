@@ -4,7 +4,7 @@ import { units } from "@/data/units";
 import { ArrowLeft, BookOpen, ExternalLink, FileText } from "lucide-react";
 import { type MouseEvent } from "react";
 
-const pdfHref = (filename: string) => `/MTH166/${encodeURI(filename)}`;
+const pdfHref = (filename: string) => `${import.meta.env.BASE_URL}MTH166/${encodeURI(filename)}`;
 const studyNotesHref = (unitNumber: number, chapterIndex: number) =>
   `/MTH166/Unit/${unitNumber}/Chapter/${chapterIndex + 1}.pdf`;
 
