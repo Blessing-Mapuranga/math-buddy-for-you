@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Info, Menu, X, Share2 } from "lucide-react";
+import { Home, BookOpenText, Search as SearchIcon, Settings as SettingsIcon, Info, Menu, X, Share2, Target } from "lucide-react";
 import { toast } from "sonner";
 import lpuLogo from "@/assets/lpu-logo.png";
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/read", label: "Read", icon: BookOpenText },
   { to: "/search", label: "Search", icon: SearchIcon },
+  { to: "/mcq", label: "MCQ Practice", icon: Target },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
   { to: "/about", label: "About", icon: Info },
 ];
