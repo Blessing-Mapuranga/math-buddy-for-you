@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import MathTutorService from "@/lib/MathTutorService";
-import { Loader2, BookOpen, Zap, Target } from "lucide-react";
+import { BookOpen, Zap, Target } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -142,98 +142,131 @@ export default function MCQPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Practice Tab */}
+          <TabsContent value="practice" className="space-y-6">
+            {assessmentMode && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Assessment Progress</span>
+                      <span className="text-sm text-muted-foreground">
+                        {currentAssessmentIndex + 1} / 50
+                      </span>
+                    </div>
+                    <Progress value={assessmentProgress} className="w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {showAssessmentSummary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assessment Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{correctCount}/50</div>
+                      <div className="text-sm text-muted-foreground">Correct Answers</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{((correctCount / 50) * 100).toFixed(1)}%</div>
+                      <div className="text-sm text-muted-foreground">Accuracy</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{totalTime.toFixed(1)} min</div>
+                      <div className="text-sm text-muted-foreground">Time Taken</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Review:</h4>
+                    {assessmentResults.slice(-5).map((result, i) => (
+                      <div key={i} className="p-3 rounded border">
+                        <div className="text-sm">{result.question}</div>
+                        <div className="text-xs mt-1">
+                          Your answer: <span className={result.isCorrect ? 'text-green-600' : 'text-red-600'}>{result.userAnswer}</span>
+                          {!result.isCorrect && <span> (Correct: {result.correctAnswer})</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={() => setShowAssessmentSummary(false)} className="w-full">
+                    Close Summary
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Sidebar Filters */}
+              {/* Sidebar */}
               <div>
                 <Card className="sticky top-4">
                   <CardHeader>
-                    <CardTitle className="text-lg">Filters</CardTitle>
+                    <CardTitle className="text-lg">Chapter Selection</CardTitle>
                     <CardDescription>
-                      Customize your practice session
+                      Select unit and chapter from Iyengar textbook
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="unit">Unit</Label>
-                      <Input
-                        id="unit"
-                        type="number"
-                        placeholder="e.g., 1"
-                        min="1"
-                        max="10"
-                        value={selectedUnit || ""}
-                        onChange={(e) =>
-                          setSelectedUnit(
-                            e.target.value ? parseInt(e.target.value) : undefined
-                          )
-                        }
-                      />
+                      <Label>Unit</Label>
+                      <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 6 }, (_, i) => (
+                            <SelectItem key={i + 1} value={(i + 1).toString()}>
+                              Unit {i + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="chapter">Chapter</Label>
-                      <Input
-                        id="chapter"
-                        type="number"
-                        placeholder="e.g., 1"
-                        min="1"
-                        max="20"
-                        value={selectedChapter || ""}
-                        onChange={(e) =>
-                          setSelectedChapter(
-                            e.target.value ? parseInt(e.target.value) : undefined
-                          )
-                        }
-                      />
+                      <Label>Chapter</Label>
+                      <Select value={selectedChapter} onValueChange={setSelectedChapter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Chapter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 10 }, (_, i) => (
+                            <SelectItem key={i + 1} value={(i + 1).toString()}>
+                              Chapter {i + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <Button
-                      onClick={() => {
-                        setSelectedUnit(undefined);
-                        setSelectedChapter(undefined);
-                      }}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Clear Filters
+                    <Button onClick={handleStartAssessment} className="w-full" size="lg">
+                      <Target className="w-4 h-4 mr-2" />
+                      Start 50-Question Assessment
                     </Button>
-
-                    {pdfId && (
-                      <Button
-                        onClick={handleGenerateMore}
-                        disabled={generatingMore}
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                      >
-                        {generatingMore ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Generate 10 More
-                          </>
-                        )}
-                      </Button>
-                    )}
-
-                    <div className="pt-4 border-t">
-                      <p className="text-xs text-gray-600 mb-3">
-                        💡 Upload a PDF from Unit 1-6 of Iyenger Math textbook to get
-                        started!
-                      </p>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Main Content Area */}
+              {/* Main Content */}
               <div className="lg:col-span-2">
-                <EndlessQuestionFeed
-                  unit={selectedUnit}
-                  chapter={selectedChapter}
-                />
+                {assessmentMode ? (
+                  <EndlessQuestionFeed
+                    unit={parseInt(selectedUnit)}
+                    chapter={parseInt(selectedChapter)}
+                    assessmentMode={true}
+                    assessmentQuestion={assessmentQuestions[currentAssessmentIndex]}
+                    onAssessmentAnswer={handleAssessmentAnswer}
+                  />
+                ) : (
+                  <EndlessQuestionFeed
+                    unit={parseInt(selectedUnit)}
+                    chapter={parseInt(selectedChapter)}
+                  />
+                )}
               </div>
             </div>
           </TabsContent>
