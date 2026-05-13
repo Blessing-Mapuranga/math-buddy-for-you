@@ -302,3 +302,8 @@ TIPS:
 }
 
 export default MathTutorService;
+
+// Create and export singleton instance
+const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+const mathTutorServiceInstance = new MathTutorService(apiKey);
+export { mathTutorServiceInstance as MathTutorService };
