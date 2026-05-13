@@ -11,7 +11,6 @@ import SearchPage from "./pages/Search";
 import Settings from "./pages/Settings";
 import Read from "./pages/Read";
 import About from "./pages/About";
-import MCQPractice from "./pages/MCQPractice";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +27,6 @@ const App = () => {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/about" element={<About />} />
-            <Route path="/mcq" element={<MCQPractice />} />
             <Route path="/unit/:unitId" element={<Unit />} />
             <Route path="/unit/:unitId/chapter/:chapterIndex" element={<ChapterNotes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

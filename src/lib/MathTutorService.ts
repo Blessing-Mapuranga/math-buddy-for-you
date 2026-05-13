@@ -7,6 +7,14 @@ class MathTutorService {
     this.baseUrl = baseUrl;
   }
 
+  private buildPromptSource(sourceText: string): string {
+    const maxLength = 4200;
+    if (sourceText.length <= maxLength) {
+      return sourceText;
+    }
+    return `${sourceText.slice(0, maxLength)}\n\n[TRUNCATED CONTENT]`;
+  }
+
   async analyzeQuestion(question: string, chapter: string, textbook: string = 'Iyengar Engineering Mathematics'): Promise<{
     derivation: string;
     explanation: string;
@@ -114,6 +122,110 @@ EXPLANATION: [brief explanation]`;
       correctAnswer: optionList[correctIndex],
       explanation: explanationMatch ? explanationMatch[1].trim() : '',
     };
+  }
+
+  async generateMCQFromText(
+    sourceText: string,
+    chapter: string,
+    difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    explanation: string;
+  }> {
+    const excerpt = this.buildPromptSource(sourceText);
+    const prompt = `You are an AI tutor. Use the following textbook excerpt to create one multiple-choice question for Chapter ${chapter} of ${textbook} at ${difficulty} difficulty.
+
+Text excerpt:
+${excerpt}
+
+Format as:
+QUESTION: [question text]
+A) [option1]
+B) [option2]
+C) [option3]
+D) [option4]
+CORRECT: [letter]
+EXPLANATION: [brief explanation]`;
+
+    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1200,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`DeepSeek API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    const questionMatch = content.match(/QUESTION:\s*(.*?)(?=A\)|$)/s);
+    const options = content.match(/A\)\s*(.*?)\nB\)\s*(.*?)\nC\)\s*(.*?)\nD\)\s*(.*?)(?=CORRECT:|$)/s);
+    const correctMatch = content.match(/CORRECT:\s*([A-D])/);
+    const explanationMatch = content.match(/EXPLANATION:\s*(.*)/s);
+
+    if (!questionMatch || !options || !correctMatch) {
+      throw new Error('Failed to parse MCQ response from text');
+    }
+
+    const optionList = [options[1], options[2], options[3], options[4]];
+    const correctIndex = correctMatch[1].charCodeAt(0) - 65;
+
+    return {
+      question: questionMatch[1].trim(),
+      options: optionList,
+      correctAnswer: optionList[correctIndex],
+      explanation: explanationMatch ? explanationMatch[1].trim() : '',
+    };
+  }
+
+  async extractPdfNotes(
+    sourceText: string,
+    chapter: string,
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<string> {
+    const excerpt = this.buildPromptSource(sourceText);
+    const prompt = `You are an AI textbook coach. Read the following textbook excerpt and create a concise study guide for Chapter ${chapter} of ${textbook}.
+
+Include:
+OVERVIEW:
+KEY CONCEPTS:
+STEP-BY-STEP PROBLEM SOLVING GUIDE:
+
+Text excerpt:
+${excerpt}`;
+
+    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1600,
+        temperature: 0.35,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`DeepSeek API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
   }
 
   async teachChapter(chapter: string, textbook: string = 'Iyengar Engineering Mathematics'): Promise<{
