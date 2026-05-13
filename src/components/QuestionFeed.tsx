@@ -39,11 +39,17 @@ interface AnswerResponse {
 interface MCQFeedProps {
   unit?: number;
   chapter?: number;
+  assessmentMode?: boolean;
+  assessmentQuestion?: any;
+  onAssessmentAnswer?: (isCorrect: boolean, answer: string) => void;
 }
 
 export const EndlessQuestionFeed: React.FC<MCQFeedProps> = ({
   unit,
   chapter,
+  assessmentMode = false,
+  assessmentQuestion,
+  onAssessmentAnswer,
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,31 +65,39 @@ export const EndlessQuestionFeed: React.FC<MCQFeedProps> = ({
     Set<string>
   >(new Set());
   const observerTarget = useRef<HTMLDivElement>(null);
+  const [tutorService] = useState(() => new MathTutorService(process.env.DEEPSEEK_API_KEY || ''));
 
   // Fetch questions
   const fetchQuestions = useCallback(async () => {
+    if (assessmentMode) return; // Don't fetch in assessment mode
+
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (unit) params.append("unit", unit.toString());
-      if (chapter) params.append("chapter", chapter.toString());
-      params.append("page", page.toString());
-      params.append("limit", "3");
-
-      const response = await axios.get<QuestionResponse>(
-        `${API_BASE}/questions?${params}`
-      );
-
-      if (response.data.success) {
-        setQuestions((prev) => [...prev, ...response.data.questions]);
-        setPage((prev) => prev + 1);
+      // Generate questions using DeepSeek
+      const generatedQuestions: Question[] = [];
+      for (let i = 0; i < 3; i++) {
+        try {
+          const mcq = await tutorService.generateMCQ(chapter?.toString() || '1', 'medium');
+          generatedQuestions.push({
+            id: `gen-${page}-${i}`,
+            question: mcq.question,
+            options: mcq.options,
+            correct_answer: mcq.correctAnswer,
+            explanation: mcq.explanation,
+            difficulty: 'medium',
+          });
+        } catch (error) {
+          console.error('Failed to generate question:', error);
+        }
       }
+      setQuestions((prev) => [...prev, ...generatedQuestions]);
+      setPage((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to fetch questions:", error);
     } finally {
       setLoading(false);
     }
-  }, [unit, chapter, page]);
+  }, [assessmentMode, tutorService, chapter, page]);
 
   // Initial fetch
   useEffect(() => {
@@ -114,6 +128,14 @@ export const EndlessQuestionFeed: React.FC<MCQFeedProps> = ({
   const handleSubmitAnswer = async (questionId: string) => {
     const answer = selectedAnswers[questionId];
     if (!answer) return;
+
+    if (assessmentMode && onAssessmentAnswer) {
+      // For assessment mode, check answer directly
+      const question = assessmentQuestion;
+      const isCorrect = answer === question.correctAnswer;
+      onAssessmentAnswer(isCorrect, answer);
+      return;
+    }
 
     try {
       const response = await axios.post<AnswerResponse>(
@@ -164,25 +186,30 @@ export const EndlessQuestionFeed: React.FC<MCQFeedProps> = ({
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2">Math Questions</h2>
+        <h2 className="text-3xl font-bold mb-2">
+          {assessmentMode ? 'Assessment Question' : 'Math Questions'}
+        </h2>
         <p className="text-gray-600">
-          Test your knowledge with AI-generated MCQs from textbook content
+          {assessmentMode 
+            ? 'Answer this assessment question from the Iyengar textbook'
+            : 'Test your knowledge with AI-generated MCQs from textbook content'
+          }
         </p>
       </div>
 
-      {questions.map((question, index) => {
+      {(assessmentMode ? [assessmentQuestion] : questions).filter(Boolean).map((question, index) => {
         const isSubmitted = submitted.has(question.id);
         const result = results[question.id];
         const selectedAnswer = selectedAnswers[question.id];
         const showExplanation = expandedExplanations.has(question.id);
 
         return (
-          <Card key={question.id} className="overflow-hidden">
+          <Card key={question.id || `assessment-${index}`} className="overflow-hidden">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <CardTitle className="text-lg">
-                    Question {index + 1}
+                    {assessmentMode ? 'Assessment Question' : `Question ${index + 1}`}
                   </CardTitle>
                   <p className="text-base font-medium mt-2 text-gray-900">
                     {question.question}

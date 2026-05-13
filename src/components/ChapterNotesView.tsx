@@ -4,7 +4,7 @@ import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
 import type { ChapterNotes } from "@/data/notes/types";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
 
 /**
  * Renders a string that may contain inline ($...$) and block ($$...$$) LaTeX.
@@ -131,6 +131,18 @@ const ChapterNotesView = ({ notes, backPath }: { notes: ChapterNotes; backPath?:
             <PracticeItem key={i} q={p.question} a={p.answer} idx={i} />
           ))}
         </ul>
+      </section>
+
+      <section className="bg-card rounded-xl p-6 border border-border shadow-card">
+        <h3 className="font-semibold text-foreground text-lg mb-4">DeepSeek AI Tutor</h3>
+        <p className="text-muted-foreground mb-4">
+          Get personalized tutoring for this chapter using advanced AI powered by DeepSeek.
+          The tutor references the Iyengar Engineering Mathematics textbook for accurate, step-by-step guidance.
+        </p>
+        <Button className="inline-flex items-center gap-2">
+          <GraduationCap className="w-4 h-4" />
+          Start AI Tutoring Session
+        </Button>
       </section>
     </div>
   );

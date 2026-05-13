@@ -1,43 +1,70 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PDFUploadSection } from "@/components/PDFUpload";
 import { EndlessQuestionFeed } from "@/components/QuestionFeed";
 import { StatsSection } from "@/components/StatsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import axios from "axios";
-import { Loader2, BookOpen, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import MathTutorService from "@/lib/MathTutorService";
+import { Loader2, BookOpen, Zap, Target } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api";
 
 export default function MCQPage() {
-  const [selectedUnit, setSelectedUnit] = useState<number | undefined>(undefined);
-  const [selectedChapter, setSelectedChapter] = useState<number | undefined>(undefined);
-  const [pdfId, setPdfId] = useState<string | null>(null);
-  const [generatingMore, setGeneratingMore] = useState(false);
-  const [filterMode, setFilterMode] = useState<"all" | "filter">("all");
+  const [selectedUnit, setSelectedUnit] = useState<string>("1");
+  const [selectedChapter, setSelectedChapter] = useState<string>("1");
+  const [tutorService] = useState(() => new MathTutorService(process.env.DEEPSEEK_API_KEY || ''));
+  const [assessmentMode, setAssessmentMode] = useState(false);
+  const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
+  const [currentAssessmentIndex, setCurrentAssessmentIndex] = useState(0);
+  const [assessmentStartTime, setAssessmentStartTime] = useState<Date | null>(null);
+  const [assessmentResults, setAssessmentResults] = useState<any[]>([]);
+  const [showAssessmentSummary, setShowAssessmentSummary] = useState(false);
 
-  const handleGenerateMore = async () => {
-    if (!pdfId) return;
+  const handleStartAssessment = async () => {
+    setAssessmentMode(true);
+    setAssessmentStartTime(new Date());
+    setCurrentAssessmentIndex(0);
+    setAssessmentResults([]);
+    setShowAssessmentSummary(false);
 
-    setGeneratingMore(true);
-    try {
-      const response = await axios.post(`${API_BASE}/generate-more`, {
-        pdf_id: pdfId,
-        count: 10,
-      });
-
-      if (response.data.success) {
-        alert(`✅ ${response.data.message}`);
+    // Generate 50 questions
+    const questions = [];
+    for (let i = 0; i < 50; i++) {
+      try {
+        const mcq = await tutorService.generateMCQ(selectedChapter, 'medium');
+        questions.push(mcq);
+      } catch (error) {
+        console.error('Failed to generate question:', error);
       }
-    } catch (error: any) {
-      alert(`Failed to generate more questions: ${error.message}`);
-    } finally {
-      setGeneratingMore(false);
+    }
+    setAssessmentQuestions(questions);
+  };
+
+  const handleAssessmentAnswer = (isCorrect: boolean, answer: string) => {
+    const result = {
+      question: assessmentQuestions[currentAssessmentIndex].question,
+      userAnswer: answer,
+      correctAnswer: assessmentQuestions[currentAssessmentIndex].correctAnswer,
+      isCorrect,
+      explanation: assessmentQuestions[currentAssessmentIndex].explanation,
+    };
+    setAssessmentResults(prev => [...prev, result]);
+
+    if (currentAssessmentIndex < 49) {
+      setCurrentAssessmentIndex(prev => prev + 1);
+    } else {
+      // Assessment complete
+      setShowAssessmentSummary(true);
+      setAssessmentMode(false);
     }
   };
+
+  const assessmentProgress = assessmentMode ? ((currentAssessmentIndex + 1) / 50) * 100 : 0;
+  const correctCount = assessmentResults.filter(r => r.isCorrect).length;
+  const totalTime = assessmentStartTime ? (new Date().getTime() - assessmentStartTime.getTime()) / 1000 / 60 : 0; // minutes
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -56,15 +83,65 @@ export default function MCQPage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto py-8 px-4">
-        <Tabs defaultValue="practice" className="space-y-6">
+        <Tabs defaultValue="tutor" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="tutor">🎓 Iyengar Master Tutor</TabsTrigger>
             <TabsTrigger value="practice">📝 Practice</TabsTrigger>
-            <TabsTrigger value="upload">⬆️ Upload PDF</TabsTrigger>
             <TabsTrigger value="stats">📊 Stats</TabsTrigger>
           </TabsList>
 
-          {/* Practice Tab */}
-          <TabsContent value="practice" className="space-y-6">
+          {/* Iyengar Master Tutor Tab */}
+          <TabsContent value="tutor" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Iyengar Master Tutor
+                </CardTitle>
+                <CardDescription>
+                  Get personalized tutoring from the Iyengar Engineering Mathematics textbook
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="unit-select">Unit</Label>
+                    <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 6 }, (_, i) => (
+                          <SelectItem key={i + 1} value={(i + 1).toString()}>
+                            Unit {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chapter-select">Chapter</Label>
+                    <Select value={selectedChapter} onValueChange={setSelectedChapter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <SelectItem key={i + 1} value={(i + 1).toString()}>
+                            Chapter {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="w-full" size="lg">
+                  <Zap className="w-4 h-4 mr-2" />
+                  Start Teaching Session
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Sidebar Filters */}
               <div>
@@ -158,40 +235,6 @@ export default function MCQPage() {
                   chapter={selectedChapter}
                 />
               </div>
-            </div>
-          </TabsContent>
-
-          {/* Upload Tab */}
-          <TabsContent value="upload">
-            <div className="max-w-2xl mx-auto">
-              <PDFUploadSection
-                onUploadSuccess={(id) => {
-                  setPdfId(id);
-                  // Auto-switch to practice tab
-                  const practiceTab = document.querySelector(
-                    '[role="tab"][value="practice"]'
-                  ) as HTMLElement;
-                  practiceTab?.click();
-                }}
-              />
-
-              {/* Quick Tips */}
-              <Card className="mt-6 bg-blue-50 border-blue-200">
-                <CardHeader>
-                  <CardTitle className="text-lg">📚 Quick Tips</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <p>
-                    ✓ Upload chapters from Iyenger Math textbook (Units 1-6)
-                  </p>
-                  <p>
-                    ✓ AI will generate unlimited practice questions automatically
-                  </p>
-                  <p>✓ Get instant AI explanations for every answer</p>
-                  <p>✓ Track your progress and accuracy over time</p>
-                  <p>✓ Generate more questions anytime with one click</p>
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 
