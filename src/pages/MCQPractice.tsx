@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +12,7 @@ import { StatsSection } from '@/components/StatsSection';
 import { MathTutorService } from '@/lib/MathTutorService';
 import { units } from '@/data/units';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 interface MCQData {
   id: string;
@@ -45,6 +46,10 @@ export const MCQPractice = () => {
   const [notesGenerated, setNotesGenerated] = useState(false);
   const [notes, setNotes] = useState<string>('');
   const [assessment, setAssessment] = useState<AssessmentState | null>(null);
+  const [assessmentTaskId, setAssessmentTaskId] = useState<string | null>(null);
+  const [assessmentProgress, setAssessmentProgress] = useState(0);
+  const [assessmentTotal, setAssessmentTotal] = useState(0);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState('');
   const [loadingPdf, setLoadingPdf] = useState(false);
@@ -147,40 +152,68 @@ export const MCQPractice = () => {
       return;
     }
 
+    setError('');
+    setAssessmentLoading(true);
+    setAssessmentProgress(0);
+    setAssessmentTotal(0);
+    setAssessmentTaskId(null);
+
     try {
-      const questions: MCQData[] = [];
+      const { taskId } = await MathTutorService.startAssessment(
+        pdfText,
+        selectedChapterTitle,
+        10,
+        'Iyengar Engineering Mathematics'
+      );
 
-      for (let i = 0; i < 20; i++) {
-        const difficulty = ['Easy', 'Medium', 'Hard'][i % 3];
-        const mcqData = await MathTutorService.generateMCQFromText(
-          pdfText,
-          selectedChapterTitle,
-          difficulty,
-          'Iyengar Engineering Mathematics'
-        );
+      setAssessmentTaskId(taskId);
 
-        questions.push({
-          id: `assess_${i}`,
-          question: mcqData.question,
-          options: mcqData.options,
-          correctAnswer: mcqData.correctAnswer,
-          explanation: mcqData.explanation,
-        });
-      }
+      let isMounted = true;
 
-      setAssessment({
-        active: true,
-        currentQuestion: 0,
-        totalQuestions: 20,
-        questions,
-        score: 0,
-        timeStarted: Date.now(),
-        answers: new Map(),
-      });
-      setShowResults(false);
+      const pollStatus = async () => {
+        if (!isMounted) return;
+
+        const status = await MathTutorService.getAssessmentStatus(taskId);
+        setAssessmentProgress(status.progress);
+        setAssessmentTotal(status.total);
+
+        if (status.status === 'failed') {
+          throw new Error(status.error || 'Assessment generation failed');
+        }
+
+        if (status.status === 'completed') {
+          const questions = (status.questions ?? []).map((item, index) => ({
+            id: `assess_${index}`,
+            question: item.question,
+            options: item.options,
+            correctAnswer: item.correct_answer,
+            explanation: item.explanation,
+          }));
+
+          setAssessment({
+            active: true,
+            currentQuestion: 0,
+            totalQuestions: questions.length,
+            questions,
+            score: 0,
+            timeStarted: Date.now(),
+            answers: new Map(),
+          });
+          setShowResults(false);
+          setAssessmentTaskId(null);
+          setAssessmentLoading(false);
+          return;
+        }
+
+        window.setTimeout(pollStatus, 1500);
+      };
+
+      await pollStatus();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to start assessment';
       setError(errorMsg);
+      setAssessmentLoading(false);
+      setAssessmentTaskId(null);
     }
   };
 
@@ -213,7 +246,7 @@ export const MCQPractice = () => {
 
   if (assessment && showResults) {
     const timeSpent = Math.round((Date.now() - assessment.timeStarted) / 1000);
-    const percentage = Math.round((assessment.score / 20) * 100);
+    const percentage = Math.round((assessment.score / assessment.totalQuestions) * 100);
 
     return (
       <div className="space-y-6">
@@ -459,11 +492,26 @@ export const MCQPractice = () => {
 
                   <Button
                     onClick={startAssessment}
-                    disabled={!selectedChapterTitle || loadingPdf}
+                    disabled={!selectedChapterTitle || loadingPdf || assessmentLoading}
                     className="w-full"
                   >
-                    Start 20-Question Assessment
+                    {assessmentLoading ? 'Preparing assessment...' : 'Start 10-Question Assessment'}
                   </Button>
+
+                  {assessmentLoading && (
+                    <div className="rounded-lg bg-blue-50 p-4">
+                      <p className="text-sm text-gray-600 mb-2">Generating assessment questions. This may take a few seconds.</p>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="h-3 bg-blue-600 transition-all"
+                          style={{ width: assessmentTotal ? `${(assessmentProgress / assessmentTotal) * 100}%` : '0%' }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {assessmentProgress}/{assessmentTotal || 10} generated
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_BACKEND_API_BASE || 'http://localhost:5000/api';
+const API_BASE =
+  import.meta.env.VITE_BACKEND_API_BASE ||
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
 
 class MathTutorService {
   private baseUrl: string;
@@ -15,11 +17,21 @@ class MathTutorService {
     return `${sourceText.slice(0, maxLength)}\n\n[TRUNCATED CONTENT]`;
   }
 
+  private async parseJsonResponse<T>(response: Response): Promise<T> {
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch (err) {
+      throw new Error(`Failed to parse backend response as JSON: ${text}`);
+    }
+  }
+
   private async post<T>(path: string, payload: unknown): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify(payload),
     });
@@ -29,7 +41,23 @@ class MathTutorService {
       throw new Error(`Backend error ${response.status}: ${text}`);
     }
 
-    return response.json();
+    return this.parseJsonResponse<T>(response);
+  }
+
+  private async get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Backend error ${response.status}: ${text}`);
+    }
+
+    return this.parseJsonResponse<T>(response);
   }
 
   private parseTeachResponse(content: string) {
@@ -40,6 +68,37 @@ class MathTutorService {
       derivation: derivationMatch ? derivationMatch[1].trim() : content.trim(),
       explanation: explanationMatch ? explanationMatch[1].trim() : content.trim(),
     };
+  }
+
+  private normalizeMCQItem(item: any) {
+    if (!item || typeof item !== 'object') {
+      throw new Error('MCQ item is invalid');
+    }
+
+    if (!item.question || !item.options || !item.correct_answer) {
+      throw new Error('MCQ item is missing required fields');
+    }
+
+    if (!Array.isArray(item.options) || item.options.length < 2) {
+      throw new Error('MCQ options must be an array with at least two values');
+    }
+
+    return {
+      question: String(item.question),
+      options: item.options.map(String),
+      correctAnswer: String(item.correct_answer),
+      explanation: item.explanation ? String(item.explanation) : '',
+    };
+  }
+
+  private extractMCQData(
+    result: { questions?: Array<Record<string, unknown>> }
+  ): { question: string; options: string[]; correctAnswer: string; explanation: string } {
+    if (!result?.questions?.length) {
+      throw new Error('Backend did not return any MCQ items');
+    }
+
+    return this.normalizeMCQItem(result.questions[0]);
   }
 
   async analyzeQuestion(
@@ -61,7 +120,7 @@ class MathTutorService {
     difficulty: 'easy' | 'medium' | 'hard' = 'medium',
     textbook: string = 'Iyengar Engineering Mathematics'
   ): Promise<{ question: string; options: string[]; correctAnswer: string; explanation: string }> {
-    const result = await this.post<{ success: boolean; questions: Array<{ question: string; options: string[]; correct_answer: string; explanation: string }> }>('/generate-mcq', {
+    const result = await this.post<{ success: boolean; questions: Array<Record<string, unknown>> }>('/generate-mcq', {
       chapter,
       source_text: null,
       difficulty,
@@ -69,13 +128,7 @@ class MathTutorService {
       question_count: 1,
     });
 
-    const item = result.questions[0];
-    return {
-      question: item.question,
-      options: item.options,
-      correctAnswer: item.correct_answer,
-      explanation: item.explanation,
-    };
+    return this.extractMCQData(result);
   }
 
   async generateMCQFromText(
@@ -85,7 +138,7 @@ class MathTutorService {
     textbook: string = 'Iyengar Engineering Mathematics'
   ): Promise<{ question: string; options: string[]; correctAnswer: string; explanation: string }> {
     const excerpt = this.buildPromptSource(sourceText);
-    const result = await this.post<{ success: boolean; questions: Array<{ question: string; options: string[]; correct_answer: string; explanation: string }> }>('/generate-mcq', {
+    const result = await this.post<{ success: boolean; questions: Array<Record<string, unknown>> }>('/generate-mcq', {
       chapter,
       source_text: excerpt,
       difficulty,
@@ -93,13 +146,7 @@ class MathTutorService {
       question_count: 1,
     });
 
-    const item = result.questions[0];
-    return {
-      question: item.question,
-      options: item.options,
-      correctAnswer: item.correct_answer,
-      explanation: item.explanation,
-    };
+    return this.extractMCQData(result);
   }
 
   async extractPdfNotes(
@@ -114,6 +161,37 @@ class MathTutorService {
       textbook,
     });
     return result.notes;
+  }
+
+  async startAssessment(
+    sourceText: string,
+    chapter: string,
+    questionCount = 10,
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{ taskId: string }> {
+    const excerpt = this.buildPromptSource(sourceText);
+    const result = await this.post<{ success: boolean; task_id: string }>('/start-assessment', {
+      chapter,
+      source_text: excerpt,
+      textbook,
+      question_count: questionCount,
+    });
+
+    return { taskId: result.task_id };
+  }
+
+  async getAssessmentStatus(
+    taskId: string
+  ): Promise<{
+    success: boolean;
+    task_id: string;
+    status: string;
+    progress: number;
+    total: number;
+    questions?: Array<{ question: string; options: string[]; correct_answer: string; explanation: string }>;
+    error?: string;
+  }> {
+    return this.get(`/assessment-status/${taskId}`);
   }
 
   async teachChapter(

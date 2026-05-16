@@ -162,18 +162,21 @@ export const QuestionFeed = ({
           <CardTitle className="text-lg">{assessmentQuestion.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <RadioGroup
+                <RadioGroup
             value={userAnswer || ''}
             onValueChange={(value) => handleAnswerSelect(qId, value)}
           >
-            {assessmentQuestion.options.map((option, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <RadioGroupItem value={index.toString()} id={`opt-${index}`} />
-                <Label htmlFor={`opt-${index}`} className="flex-1 cursor-pointer">
-                  {String.fromCharCode(65 + index)}) {option}
-                </Label>
-              </div>
-            ))}
+            {assessmentQuestion.options.map((option, index) => {
+              const optionId = `${qId}-opt-${index}`;
+              return (
+                <div key={index} className="flex items-center space-x-2">
+                  <RadioGroupItem value={index.toString()} id={optionId} />
+                  <Label htmlFor={optionId} className="flex-1 cursor-pointer">
+                    {String.fromCharCode(65 + index)}) {option}
+                  </Label>
+                </div>
+              );
+            })}
           </RadioGroup>
 
           {userAnswer !== undefined && (
