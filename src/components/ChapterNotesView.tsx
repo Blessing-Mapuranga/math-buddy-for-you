@@ -5,6 +5,7 @@ import { InlineMath, BlockMath } from "react-katex";
 import type { ChapterNotes } from "@/data/notes/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
+import { MathTutorService } from "@/lib/MathTutorService";
 
 /**
  * Renders a string that may contain inline ($...$) and block ($$...$$) LaTeX.
@@ -75,6 +76,24 @@ const PracticeItem = ({ q, a, idx }: { q: string; a: string; idx: number }) => {
 
 const ChapterNotesView = ({ notes, backPath }: { notes: ChapterNotes; backPath?: string }) => {
   const navigate = useNavigate();
+  const [teaching, setTeaching] = useState(false);
+  const [teachingOutput, setTeachingOutput] = useState('');
+  const [teachError, setTeachError] = useState('');
+
+  const handleTeachSession = async () => {
+    setTeachError('');
+    setTeaching(true);
+    setTeachingOutput('');
+    try {
+      const response = await MathTutorService.teachChapter(notes.title, notes.unitId);
+      const parts = [response.overview, ...response.keyProblems.map((item) => `Problem:\n${item.problem}\nSolution:\n${item.solution}`), response.tips].filter(Boolean);
+      setTeachingOutput(parts.join('\n\n'));
+    } catch (error) {
+      setTeachError(error instanceof Error ? error.message : 'Unable to start AI tutoring');
+    } finally {
+      setTeaching(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -139,10 +158,27 @@ const ChapterNotesView = ({ notes, backPath }: { notes: ChapterNotes; backPath?:
           Get personalized tutoring for this chapter using advanced AI powered by DeepSeek.
           The tutor references the Iyengar Engineering Mathematics textbook for accurate, step-by-step guidance.
         </p>
-        <Button className="inline-flex items-center gap-2">
+        <Button
+          className="inline-flex items-center gap-2"
+          onClick={handleTeachSession}
+          disabled={teaching}
+        >
           <GraduationCap className="w-4 h-4" />
-          Start AI Tutoring Session
+          {teaching ? 'Generating session...' : 'Start AI Tutoring Session'}
         </Button>
+
+        {teachError && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {teachError}
+          </div>
+        )}
+
+        {teachingOutput && (
+          <div className="mt-6 rounded-xl border border-border bg-slate-50 p-5 text-foreground">
+            <h4 className="mb-3 text-base font-semibold">AI Tutoring Output</h4>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">{teachingOutput}</div>
+          </div>
+        )}
       </section>
     </div>
   );

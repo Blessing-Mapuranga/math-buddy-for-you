@@ -1,9 +1,9 @@
+const API_BASE = import.meta.env.VITE_BACKEND_API_BASE || 'http://localhost:5000/api';
+
 class MathTutorService {
-  private apiKey: string;
   private baseUrl: string;
 
-  constructor(apiKey: string, baseUrl: string = 'https://api.deepseek.com') {
-    this.apiKey = apiKey;
+  constructor(baseUrl: string = API_BASE) {
     this.baseUrl = baseUrl;
   }
 
@@ -15,112 +15,66 @@ class MathTutorService {
     return `${sourceText.slice(0, maxLength)}\n\n[TRUNCATED CONTENT]`;
   }
 
-  async analyzeQuestion(question: string, chapter: string, textbook: string = 'Iyengar Engineering Mathematics'): Promise<{
-    derivation: string;
-    explanation: string;
-  }> {
-    const prompt = `You are an AI tutor specialized in ${textbook}. Analyze this question from Chapter ${chapter}: "${question}"
-
-Provide a step-by-step mathematical derivation that is easy for engineering students to follow. Include:
-1. Step-by-step solution
-2. Mathematical logic behind each step
-3. Key concepts used
-4. Common mistakes to avoid
-
-Format your response as:
-DERIVATION:
-[step-by-step solution]
-
-EXPLANATION:
-[detailed explanation]`;
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+  private async post<T>(path: string, payload: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.3,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.statusText}`);
+      const text = await response.text();
+      throw new Error(`Backend error ${response.status}: ${text}`);
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
+    return response.json();
+  }
 
-    // Parse the response
+  private parseTeachResponse(content: string) {
     const derivationMatch = content.match(/DERIVATION:\s*(.*?)(?=EXPLANATION:|$)/s);
     const explanationMatch = content.match(/EXPLANATION:\s*(.*)/s);
 
     return {
-      derivation: derivationMatch ? derivationMatch[1].trim() : content,
-      explanation: explanationMatch ? explanationMatch[1].trim() : '',
+      derivation: derivationMatch ? derivationMatch[1].trim() : content.trim(),
+      explanation: explanationMatch ? explanationMatch[1].trim() : content.trim(),
     };
   }
 
-  async generateMCQ(chapter: string, difficulty: 'easy' | 'medium' | 'hard' = 'medium', textbook: string = 'Iyengar Engineering Mathematics'): Promise<{
-    question: string;
-    options: string[];
-    correctAnswer: string;
-    explanation: string;
-  }> {
-    const prompt = `Generate a multiple-choice question from Chapter ${chapter} of ${textbook} at ${difficulty} difficulty level.
-
-Format as:
-QUESTION: [question text]
-A) [option1]
-B) [option2]
-C) [option3]
-D) [option4]
-CORRECT: [letter]
-EXPLANATION: [brief explanation]`;
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
+  async analyzeQuestion(
+    question: string,
+    chapter: string,
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{ derivation: string; explanation: string }> {
+    const result = await this.post<{ success: boolean; explanation: string }>('/teach', {
+      problem_context: question,
+      chapter,
+      textbook,
     });
 
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.statusText}`);
-    }
+    return this.parseTeachResponse(result.explanation);
+  }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
+  async generateMCQ(
+    chapter: string,
+    difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{ question: string; options: string[]; correctAnswer: string; explanation: string }> {
+    const result = await this.post<{ success: boolean; questions: Array<{ question: string; options: string[]; correct_answer: string; explanation: string }> }>('/generate-mcq', {
+      chapter,
+      source_text: null,
+      difficulty,
+      textbook,
+      question_count: 1,
+    });
 
-    // Parse the response
-    const questionMatch = content.match(/QUESTION:\s*(.*?)(?=A\)|$)/s);
-    const options = content.match(/A\)\s*(.*?)\nB\)\s*(.*?)\nC\)\s*(.*?)\nD\)\s*(.*?)(?=CORRECT:|$)/s);
-    const correctMatch = content.match(/CORRECT:\s*([A-D])/);
-    const explanationMatch = content.match(/EXPLANATION:\s*(.*)/s);
-
-    if (!questionMatch || !options || !correctMatch) {
-      throw new Error('Failed to parse MCQ response');
-    }
-
-    const optionList = [options[1], options[2], options[3], options[4]];
-    const correctIndex = correctMatch[1].charCodeAt(0) - 65; // A=0, B=1, etc.
-
+    const item = result.questions[0];
     return {
-      question: questionMatch[1].trim(),
-      options: optionList,
-      correctAnswer: optionList[correctIndex],
-      explanation: explanationMatch ? explanationMatch[1].trim() : '',
+      question: item.question,
+      options: item.options,
+      correctAnswer: item.correct_answer,
+      explanation: item.explanation,
     };
   }
 
@@ -129,64 +83,22 @@ EXPLANATION: [brief explanation]`;
     chapter: string,
     difficulty: 'easy' | 'medium' | 'hard' = 'medium',
     textbook: string = 'Iyengar Engineering Mathematics'
-  ): Promise<{
-    question: string;
-    options: string[];
-    correctAnswer: string;
-    explanation: string;
-  }> {
+  ): Promise<{ question: string; options: string[]; correctAnswer: string; explanation: string }> {
     const excerpt = this.buildPromptSource(sourceText);
-    const prompt = `You are an AI tutor. Use the following textbook excerpt to create one multiple-choice question for Chapter ${chapter} of ${textbook} at ${difficulty} difficulty.
-
-Text excerpt:
-${excerpt}
-
-Format as:
-QUESTION: [question text]
-A) [option1]
-B) [option2]
-C) [option3]
-D) [option4]
-CORRECT: [letter]
-EXPLANATION: [brief explanation]`;
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1200,
-        temperature: 0.7,
-      }),
+    const result = await this.post<{ success: boolean; questions: Array<{ question: string; options: string[]; correct_answer: string; explanation: string }> }>('/generate-mcq', {
+      chapter,
+      source_text: excerpt,
+      difficulty,
+      textbook,
+      question_count: 1,
     });
 
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    const questionMatch = content.match(/QUESTION:\s*(.*?)(?=A\)|$)/s);
-    const options = content.match(/A\)\s*(.*?)\nB\)\s*(.*?)\nC\)\s*(.*?)\nD\)\s*(.*?)(?=CORRECT:|$)/s);
-    const correctMatch = content.match(/CORRECT:\s*([A-D])/);
-    const explanationMatch = content.match(/EXPLANATION:\s*(.*)/s);
-
-    if (!questionMatch || !options || !correctMatch) {
-      throw new Error('Failed to parse MCQ response from text');
-    }
-
-    const optionList = [options[1], options[2], options[3], options[4]];
-    const correctIndex = correctMatch[1].charCodeAt(0) - 65;
-
+    const item = result.questions[0];
     return {
-      question: questionMatch[1].trim(),
-      options: optionList,
-      correctAnswer: optionList[correctIndex],
-      explanation: explanationMatch ? explanationMatch[1].trim() : '',
+      question: item.question,
+      options: item.options,
+      correctAnswer: item.correct_answer,
+      explanation: item.explanation,
     };
   }
 
@@ -196,93 +108,37 @@ EXPLANATION: [brief explanation]`;
     textbook: string = 'Iyengar Engineering Mathematics'
   ): Promise<string> {
     const excerpt = this.buildPromptSource(sourceText);
-    const prompt = `You are an AI textbook coach. Read the following textbook excerpt and create a concise study guide for Chapter ${chapter} of ${textbook}.
-
-Include:
-OVERVIEW:
-KEY CONCEPTS:
-STEP-BY-STEP PROBLEM SOLVING GUIDE:
-
-Text excerpt:
-${excerpt}`;
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1600,
-        temperature: 0.35,
-      }),
+    const result = await this.post<{ success: boolean; notes: string }>('/extract-notes', {
+      chapter_text: excerpt,
+      chapter,
+      textbook,
     });
-
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
+    return result.notes;
   }
 
-  async teachChapter(chapter: string, textbook: string = 'Iyengar Engineering Mathematics'): Promise<{
+  async teachChapter(
+    chapter: string,
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{
     overview: string;
     keyProblems: Array<{ problem: string; solution: string }>;
     tips: string;
   }> {
-    const prompt = `Provide a comprehensive teaching session for Chapter ${chapter} of ${textbook}.
-
-Include:
-1. Chapter overview
-2. 3-5 key problems with step-by-step solutions
-3. Study tips for engineering students
-
-Format as:
-OVERVIEW:
-[overview text]
-
-KEY PROBLEMS:
-1. Problem: [problem]
-   Solution: [step-by-step solution]
-
-2. ...
-
-TIPS:
-[study tips]`;
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 3000,
-        temperature: 0.3,
-      }),
+    const result = await this.post<{ success: boolean; explanation: string }>('/teach', {
+      problem_context: `Teach me Chapter ${chapter}. Include overview, key problems, and study tips.`,
+      chapter,
+      textbook,
     });
 
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    // Parse the response
-    const overviewMatch = content.match(/OVERVIEW:\s*(.*?)(?=KEY PROBLEMS:|$)/s);
-    const problemsSection = content.match(/KEY PROBLEMS:\s*(.*?)(?=TIPS:|$)/s);
-    const tipsMatch = content.match(/TIPS:\s*(.*)/s);
+    const raw = result.explanation;
+    const overviewMatch = raw.match(/OVERVIEW:\s*(.*?)(?=KEY PROBLEMS:|$)/s);
+    const problemsSection = raw.match(/KEY PROBLEMS:\s*(.*?)(?=TIPS:|$)/s);
+    const tipsMatch = raw.match(/TIPS:\s*(.*)/s);
 
     const keyProblems: Array<{ problem: string; solution: string }> = [];
     if (problemsSection) {
       const problems = problemsSection[1].split(/\d+\.\s*Problem:/).slice(1);
-      problems.forEach(problemText => {
+      problems.forEach((problemText) => {
         const match = problemText.match(/Problem:\s*(.*?)\s*Solution:\s*(.*)/s);
         if (match) {
           keyProblems.push({
@@ -303,7 +159,5 @@ TIPS:
 
 export default MathTutorService;
 
-// Create and export singleton instance
-const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
-const mathTutorServiceInstance = new MathTutorService(apiKey);
+const mathTutorServiceInstance = new MathTutorService();
 export { mathTutorServiceInstance as MathTutorService };
