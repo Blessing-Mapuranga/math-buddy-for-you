@@ -1,6 +1,6 @@
 const API_BASE =
-  import.meta.env.VITE_BACKEND_API_BASE ||
-  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+  import.meta.env.VITE_BACKEND_API_BASE ??
+  (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
 class MathTutorService {
   private baseUrl: string;
