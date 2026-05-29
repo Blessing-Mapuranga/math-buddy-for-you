@@ -14,9 +14,12 @@ from .models import (
     AssessmentTask,
     AssessmentTaskStatus,
     ExtractNotesRequest,
+    ExtractNotesResponse,
     MCQGenerateRequest,
     MCQGenerateResponse,
     MCQItem,
+    SolveRequest,
+    SolveResponse,
     StatsResponse,
     StudyBlock,
     TeachRequest,
@@ -37,15 +40,19 @@ stats_store = {
 }
 
 
-async def call_gemini(messages: List[Dict[str, str]], max_tokens: int = 3000, temperature: float = 0.0) -> str:
+async def call_gemini(messages: List[Dict[str, str]], max_tokens: int = 3000, temperature: float = 0.0, model: Optional[str] = None, tools: Optional[List[Dict[str, Any]]] = None) -> str:
+    payload = {
+        "model": model or settings.gemini_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if tools:
+        payload["tools"] = tools
+
     response = await http_client.post(
         f"{settings.gemini_base_url}/v1/chat/completions",
-        json={
-            "model": settings.gemini_model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        },
+        json=payload,
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {settings.gemini_api_key}",
@@ -186,6 +193,43 @@ async def extract_notes(request: ExtractNotesRequest) -> ExtractNotesResponse:
     )
 
     return ExtractNotesResponse(success=True, notes=raw_response.strip())
+
+
+async def solve_live_question(request: 'SolveRequest') -> 'SolveResponse':
+    system_prompt = (
+        "You are an expert mathematics and aerospace engineering tutor. "
+        "Solve the user's problem step-by-step. Search the web to verify complex formulas, constants, or methods if needed. "
+        "Always format mathematical expressions, equations, and variables beautifully using standard LaTeX formatting "
+        "(e.g., $$for block equations$$ and $for inline equations$)."
+    )
+
+    user_prompt = (
+        f"Question: {request.question}\n"
+        f"Topic: {request.topic or 'General mathematics and engineering'}\n"
+        "Provide a fully worked solution. If you reference external sources, include a References section with URLs. "
+        "Return the answer as Markdown with LaTeX math formatting."
+    )
+
+    tools = [
+        {
+            "name": "google_search",
+            "type": "search",
+            "description": "Search the web for up-to-date verified math and engineering methods.",
+        }
+    ]
+
+    raw_response = await call_gemini(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        max_tokens=3200,
+        temperature=0.15,
+        model="gemini-1.5-flash",
+        tools=tools,
+    )
+
+    return SolveResponse(success=True, solution=raw_response.strip())
 
 
 async def generate_mcq(request: MCQGenerateRequest) -> MCQGenerateResponse:

@@ -163,6 +163,19 @@ class MathTutorService {
     return result.notes;
   }
 
+  async solveLiveQuestion(
+    question: string,
+    topic?: string,
+    textbook: string = 'Iyengar Engineering Mathematics'
+  ): Promise<{ solution: string; references?: string }> {
+    const result = await this.post<{ success: boolean; solution: string; references?: string }>('/solve', {
+      question,
+      topic,
+      textbook,
+    });
+    return { solution: result.solution, references: result.references };
+  }
+
   async startAssessment(
     sourceText: string,
     chapter: string,

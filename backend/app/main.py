@@ -9,6 +9,8 @@ from .models import (
     ExtractNotesResponse,
     MCQGenerateRequest,
     MCQGenerateResponse,
+    SolveRequest,
+    SolveResponse,
     StatsResponse,
     TeachRequest,
     TeachResponse,
@@ -24,6 +26,7 @@ from .services import (
     teach_problem,
     extract_notes,
     generate_mcq,
+    solve_live_question,
 )
 
 app = FastAPI(
@@ -76,6 +79,22 @@ async def api_generate_mcq(request: MCQGenerateRequest):
         return await generate_mcq(request)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/solve", response_model=SolveResponse)
+async def api_solve(request: SolveRequest) -> SolveResponse:
+    try:
+        return await solve_live_question(request)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.api_route("/api/solve", methods=["GET", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def api_solve_method_not_allowed():
+    raise HTTPException(
+        status_code=405,
+        detail="Method not allowed. Use POST /api/solve with { question: string, topic?: string }.",
+    )
 
 
 @app.post("/api/start-assessment", response_model=AssessmentStatusResponse)

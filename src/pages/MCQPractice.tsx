@@ -11,6 +11,11 @@ import { QuestionFeed } from '@/components/QuestionFeed';
 import { StatsSection } from '@/components/StatsSection';
 import { MathTutorService } from '@/lib/MathTutorService';
 import { units } from '@/data/units';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -54,6 +59,11 @@ export const MCQPractice = () => {
   const [error, setError] = useState('');
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [pagesLoaded, setPagesLoaded] = useState<number | null>(null);
+  const [liveQuestion, setLiveQuestion] = useState('');
+  const [liveSolution, setLiveSolution] = useState('');
+  const [liveReferences, setLiveReferences] = useState<string | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState('');
 
   const selectedUnit = units.find((unit) => unit.id === selectedUnitId) ?? units[0];
   const selectedChapterTitle = selectedUnit.chapters[selectedChapterIndex] ?? '';
@@ -143,6 +153,33 @@ export const MCQPractice = () => {
       setError(errorMsg);
     } finally {
       setGeneratingNotes(false);
+    }
+  };
+
+  const solveLiveQuestion = async () => {
+    if (!liveQuestion.trim()) {
+      setLiveError('Please enter your math or engineering question.');
+      return;
+    }
+
+    setLiveLoading(true);
+    setLiveError('');
+    setLiveSolution('');
+    setLiveReferences(null);
+
+    try {
+      const result = await MathTutorService.solveLiveQuestion(
+        liveQuestion,
+        selectedChapterTitle,
+        'Iyengar Engineering Mathematics'
+      );
+      setLiveSolution(result.solution);
+      setLiveReferences(result.references ?? null);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to solve live question';
+      setLiveError(errorMsg);
+    } finally {
+      setLiveLoading(false);
     }
   };
 
@@ -338,7 +375,7 @@ export const MCQPractice = () => {
       )}
 
       <Tabs defaultValue="library" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="library" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Library</span>
@@ -346,6 +383,10 @@ export const MCQPractice = () => {
           <TabsTrigger value="practice" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Practice</span>
+          </TabsTrigger>
+          <TabsTrigger value="live" className="flex items-center gap-2">
+            <LoaderCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Live Tutor</span>
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -528,6 +569,71 @@ export const MCQPractice = () => {
               </AlertDescription>
             </Alert>
           )}
+        </TabsContent>
+
+        <TabsContent value="live" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Live AI Tutor</CardTitle>
+              <CardDescription>
+                Send a live math or engineering question to the AI and get a web-verified step-by-step solution.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {liveError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{liveError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="live-question" className="block text-sm font-medium">
+                  Question
+                </label>
+                <textarea
+                  id="live-question"
+                  rows={6}
+                  value={liveQuestion}
+                  onChange={(event) => setLiveQuestion(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="Type a math or engineering question here, e.g. 'Find the Fourier series of x^2 on [-\pi, \pi]'"
+                  disabled={liveLoading}
+                />
+              </div>
+
+              <Button
+                onClick={solveLiveQuestion}
+                disabled={liveLoading || !liveQuestion.trim()}
+                className="w-full"
+              >
+                {liveLoading ? 'Solving live...' : 'Solve Live'}
+              </Button>
+
+              {liveSolution && (
+                <Card className="border border-slate-200">
+                  <CardHeader>
+                    <CardTitle>Solution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="prose prose-slate max-w-none text-sm">
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {liveSolution}
+                    </ReactMarkdown>
+                  </CardContent>
+                </Card>
+              )}
+
+              {liveReferences && (
+                <Card className="border border-slate-200">
+                  <CardHeader>
+                    <CardTitle>References</CardTitle>
+                  </CardHeader>
+                  <CardContent className="prose prose-slate max-w-none text-sm">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{liveReferences}</ReactMarkdown>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="stats">
