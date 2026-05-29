@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LoaderCircle, BookOpen, BarChart3, FileText } from 'lucide-react';
 import { QuestionFeed } from '@/components/QuestionFeed';
 import { StatsSection } from '@/components/StatsSection';
-import { MathTutorService } from '@/lib/MathTutorService';
 import { units } from '@/data/units';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
@@ -22,16 +21,6 @@ interface MCQData {
   explanation: string;
 }
 
-interface AssessmentState {
-  active: boolean;
-  currentQuestion: number;
-  totalQuestions: number;
-  questions: MCQData[];
-  score: number;
-  timeStarted: number;
-  answers: Map<number, string>;
-}
-
 const pdfHref = (filename: string) => `/MTH166/${encodeURIComponent(filename)}`;
 
 export const MCQPractice = () => {
@@ -42,15 +31,6 @@ export const MCQPractice = () => {
   const [selectedPdfFile, setSelectedPdfFile] = useState(
     units[0]?.chapterPdfs?.[0]?.[0] ?? ''
   );
-  const [generatingNotes, setGeneratingNotes] = useState(false);
-  const [notesGenerated, setNotesGenerated] = useState(false);
-  const [notes, setNotes] = useState<string>('');
-  const [assessment, setAssessment] = useState<AssessmentState | null>(null);
-  const [assessmentTaskId, setAssessmentTaskId] = useState<string | null>(null);
-  const [assessmentProgress, setAssessmentProgress] = useState(0);
-  const [assessmentTotal, setAssessmentTotal] = useState(0);
-  const [assessmentLoading, setAssessmentLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState('');
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [pagesLoaded, setPagesLoaded] = useState<number | null>(null);
@@ -74,7 +54,6 @@ export const MCQPractice = () => {
     setSelectedPdfFile(chapterFiles[0] ?? '');
     setPdfText('');
     setFileName('');
-    setNotesGenerated(false);
     setPagesLoaded(null);
   }, [selectedChapterIndex, selectedUnitId]);
 
@@ -106,7 +85,6 @@ export const MCQPractice = () => {
 
     setLoadingPdf(true);
     setError('');
-    setNotesGenerated(false);
 
     try {
       const pdfUrl = pdfHref(selectedPdfFile);
@@ -120,207 +98,6 @@ export const MCQPractice = () => {
       setLoadingPdf(false);
     }
   };
-
-  const generateStudyNotes = async () => {
-    if (!pdfText || !selectedChapterTitle) {
-      setError('Please load a library PDF and select a chapter first.');
-      return;
-    }
-
-    setGeneratingNotes(true);
-    setError('');
-
-    try {
-      const extractedNotes = await MathTutorService.extractPdfNotes(
-        pdfText,
-        selectedChapterTitle,
-        'Iyengar Engineering Mathematics'
-      );
-      setNotes(extractedNotes);
-      setNotesGenerated(true);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to generate notes';
-      setError(errorMsg);
-    } finally {
-      setGeneratingNotes(false);
-    }
-  };
-
-  const startAssessment = async () => {
-    if (!pdfText || !selectedChapterTitle) {
-      setError('Please load a library PDF and select a chapter first.');
-      return;
-    }
-
-    setError('');
-    setAssessmentLoading(true);
-    setAssessmentProgress(0);
-    setAssessmentTotal(0);
-    setAssessmentTaskId(null);
-
-    try {
-      const { taskId } = await MathTutorService.startAssessment(
-        pdfText,
-        selectedChapterTitle,
-        10,
-        'Iyengar Engineering Mathematics'
-      );
-
-      setAssessmentTaskId(taskId);
-
-      let isMounted = true;
-
-      const pollStatus = async () => {
-        if (!isMounted) return;
-
-        const status = await MathTutorService.getAssessmentStatus(taskId);
-        setAssessmentProgress(status.progress);
-        setAssessmentTotal(status.total);
-
-        if (status.status === 'failed') {
-          throw new Error(status.error || 'Assessment generation failed');
-        }
-
-        if (status.status === 'completed') {
-          const questions = (status.questions ?? []).map((item, index) => ({
-            id: `assess_${index}`,
-            question: item.question,
-            options: item.options,
-            correctAnswer: item.correct_answer,
-            explanation: item.explanation,
-          }));
-
-          setAssessment({
-            active: true,
-            currentQuestion: 0,
-            totalQuestions: questions.length,
-            questions,
-            score: 0,
-            timeStarted: Date.now(),
-            answers: new Map(),
-          });
-          setShowResults(false);
-          setAssessmentTaskId(null);
-          setAssessmentLoading(false);
-          return;
-        }
-
-        window.setTimeout(pollStatus, 1500);
-      };
-
-      await pollStatus();
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to start assessment';
-      setError(errorMsg);
-      setAssessmentLoading(false);
-      setAssessmentTaskId(null);
-    }
-  };
-
-  const handleAssessmentAnswer = (answer: string) => {
-    if (!assessment) return;
-
-    const currentQ = assessment.questions[assessment.currentQuestion];
-    const isCorrect = currentQ.options[parseInt(answer)] === currentQ.correctAnswer;
-    const newAnswers = new Map(assessment.answers);
-    newAnswers.set(assessment.currentQuestion, answer);
-    const newScore = isCorrect ? assessment.score + 1 : assessment.score;
-
-    if (assessment.currentQuestion < assessment.totalQuestions - 1) {
-      setAssessment({
-        ...assessment,
-        currentQuestion: assessment.currentQuestion + 1,
-        score: newScore,
-        answers: newAnswers,
-      });
-    } else {
-      setAssessment({
-        ...assessment,
-        score: newScore,
-        answers: newAnswers,
-        active: false,
-      });
-      setShowResults(true);
-    }
-  };
-
-  if (assessment && showResults) {
-    const timeSpent = Math.round((Date.now() - assessment.timeStarted) / 1000);
-    const percentage = Math.round((assessment.score / assessment.totalQuestions) * 100);
-
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Assessment Complete!</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg bg-blue-50 p-4">
-                <p className="text-sm text-gray-600">Score</p>
-                <p className="text-2xl font-bold text-blue-900">{assessment.score}/20</p>
-              </div>
-              <div className="rounded-lg bg-purple-50 p-4">
-                <p className="text-sm text-gray-600">Percentage</p>
-                <p className="text-2xl font-bold text-purple-900">{percentage}%</p>
-              </div>
-              <div className="rounded-lg bg-green-50 p-4">
-                <p className="text-sm text-gray-600">Time</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {Math.floor(timeSpent / 60)}m {timeSpent % 60}s
-                </p>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => {
-                setAssessment(null);
-                setShowResults(false);
-              }}
-              className="w-full"
-            >
-              Try Another Assessment
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (assessment && assessment.active) {
-    const currentQuestion = assessment.questions[assessment.currentQuestion];
-
-    return (
-      <div className="space-y-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm font-medium">
-                Question {assessment.currentQuestion + 1}/{assessment.totalQuestions}
-              </span>
-              <span className="text-sm font-medium text-green-600">
-                Score: {assessment.score}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ width: `${((assessment.currentQuestion + 1) / 20) * 100}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <QuestionFeed
-          unit={selectedUnit.number}
-          chapter={selectedChapterTitle}
-          assessmentMode={true}
-          assessmentQuestion={currentQuestion}
-          onAssessmentAnswer={handleAssessmentAnswer}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -442,33 +219,6 @@ export const MCQPractice = () => {
                 </div>
               )}
 
-              {pdfText && (
-                <Button
-                  onClick={generateStudyNotes}
-                  disabled={generatingNotes || !selectedChapterTitle}
-                  className="w-full"
-                >
-                  {generatingNotes && (
-                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {generatingNotes ? 'Generating Notes...' : 'Generate Study Notes'}
-                </Button>
-              )}
-
-              {notesGenerated && notes && (
-                <Card className="bg-green-50">
-                  <CardHeader>
-                    <CardTitle className="text-base text-green-900">
-                      Study Notes Generated
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none text-sm whitespace-pre-wrap text-gray-800">
-                      {notes}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -490,36 +240,15 @@ export const MCQPractice = () => {
                     </p>
                   </div>
 
-                  <Button
-                    onClick={startAssessment}
-                    disabled={!selectedChapterTitle || loadingPdf || assessmentLoading}
-                    className="w-full"
-                  >
-                    {assessmentLoading ? 'Preparing assessment...' : 'Start 10-Question Assessment'}
-                  </Button>
-
-                  {assessmentLoading && (
-                    <div className="rounded-lg bg-blue-50 p-4">
-                      <p className="text-sm text-gray-600 mb-2">Generating assessment questions. This may take a few seconds.</p>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="h-3 bg-blue-600 transition-all"
-                          style={{ width: assessmentTotal ? `${(assessmentProgress / assessmentTotal) * 100}%` : '0%' }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {assessmentProgress}/{assessmentTotal || 10} generated
-                      </p>
-                    </div>
-                  )}
+                      <Alert>
+                    <AlertDescription>
+                      Assessment generation is disabled in this version.
+                    </AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
 
-              <QuestionFeed
-                unit={selectedUnit.number}
-                chapter={selectedChapterTitle}
-                pdfSourceText={pdfText}
-              />
+              <QuestionFeed pdfSourceText={pdfText} />
             </>
           ) : (
             <Alert>

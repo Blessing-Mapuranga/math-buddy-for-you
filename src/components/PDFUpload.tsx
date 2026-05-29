@@ -90,7 +90,7 @@ export const PDFUpload = ({ onPdfExtracted }: PDFUploadProps) => {
       <CardHeader>
         <CardTitle>Upload Textbook PDF</CardTitle>
         <CardDescription>
-          Upload your math textbook or chapter for AI-powered learning
+          Upload your math textbook or chapter to extract text for practice.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

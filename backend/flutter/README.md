@@ -5,13 +5,7 @@ This directory contains a lightweight Flutter integration blueprint for the Pyth
 ## Architecture
 
 - The Python backend exposes REST endpoints at `http://localhost:5000` using route paths under `/api`.
-- Flutter should use a single `MathBuddyApiClient` service class to centralize requests:
-  - `POST /api/parse-textbook`
-  - `POST /api/teach`
-  - `POST /api/extract-notes`
-  - `POST /api/generate-mcq`
-  - `POST /api/start-assessment`
-  - `GET /api/assessment-status/{id}`
+- Currently the backend includes a minimal statistics endpoint only:
   - `GET /api/stats`
 
 ## Recommended integration
