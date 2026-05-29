@@ -122,15 +122,3 @@ class StatsResponse(BaseModel):
     total_answers: int
     correct_answers: int
     accuracy: float
-
-
-class SolveRequest(BaseModel):
-    question: str
-    topic: Optional[str] = None
-    textbook: str = "Iyengar Engineering Mathematics"
-
-
-class SolveResponse(BaseModel):
-    success: bool
-    solution: str
-    references: Optional[str] = None
