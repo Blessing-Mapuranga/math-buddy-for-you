@@ -239,9 +239,9 @@ export const MCQPractice = () => {
                     </p>
                   </div>
 
-                      <Alert>
+                  <Alert>
                     <AlertDescription>
-                      Assessment generation is disabled in this version.
+                      Scroll down to generate AI-powered MCQs from this PDF.
                     </AlertDescription>
                   </Alert>
                 </CardContent>
