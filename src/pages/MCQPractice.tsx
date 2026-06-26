@@ -45,7 +45,6 @@ export const MCQPractice = () => {
     setSelectedPdfFile(initialUnit.chapterPdfs?.[0]?.[0] ?? '');
     setPdfText('');
     setFileName('');
-    setNotesGenerated(false);
     setPagesLoaded(null);
   }, [selectedUnitId]);
 
